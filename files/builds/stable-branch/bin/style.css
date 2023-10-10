@@ -1,0 +1,66 @@
+button {
+    color: #0a171f; 
+    background-color: #fff9ed;
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+checkbutton {
+    border-radius:5px;
+    padding-left: 20px;
+}
+
+checkbutton check {
+    color:#3b4252;
+    background:#fff9ed;
+    border-radius:2px;
+}
+
+button checkbox {
+    margin-right: 0px;
+}
+
+#text {
+    padding: 20px 20px 0 20px;
+    color: #0a0d0f;
+}
+
+#padding-all {
+    padding: 20px 20px 0 20px; 
+}
+
+#padding-left-bottom {
+    margin-top: 30px;
+    margin-right: 300px;
+    padding-left: 20px;
+}
+
+notebook {
+    margin: 20px 20px 0 25px;
+    border-radius: 6px;
+}
+
+notebook header {
+    border-radius: 5px 5px 0 0;
+}
+
+notebook header tabs tab {
+	color: #0a171f;
+	background: #ffffff;
+	border-radius: 6px;
+    margin: 5px 5px 5px 5px;
+}
+
+notebook header tabs tab:checked{
+	color: #ffffff;
+	background: #0a171f;
+	border-radius: 6px;
+    margin: 5px 5px 5px 5px;
+}
+
+notebook header tabs tab:hover{
+	color: #ffffff;
+	background: #0a171f;
+	border-radius: 6px;
+    margin: 5px 5px 5px 5px;
+}
