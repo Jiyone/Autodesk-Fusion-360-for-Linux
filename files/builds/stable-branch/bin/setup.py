@@ -140,19 +140,42 @@ class Assistant_EN(Gtk.Assistant):
         self.append_page(self.complete)
         self.set_page_type(self.complete, Gtk.AssistantPageType.PROGRESS)
         self.set_page_title(self.complete, "  Customization  ")
-        label = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
+        label = Gtk.Label(label="<span color='#0a171f' font-weight='bold' size='16000'>Customization</span>\n\n"
+                                "Here you can make additional settings that will later affect the installation and use of Autodesk Fusion 360:")
+        label.set_use_markup (True)
         label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
+        label.set_name('text')
         self.complete.pack_start(label, False, False, 0)        
 
-        label1 = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label1.set_line_wrap(True)
-        label1.set_name('small') # assign CSS settings
-        self.complete.pack_start(label1, False, False, 0)
+        notebook = Gtk.Notebook()
+        page1 = Gtk.Box()
+        page1.set_border_width(20)
+        label_0 = Gtk.Label(label="Would you like use DXVK?")
+        page1.pack_start(label_0, True, True, 0)
+        switch = Gtk.Switch()
+        switch.connect("notify::active", self.on_switch_activated)
+        switch.set_active(True)
+        page1.pack_end(switch, True, True, 0)
 
-        checkbutton = Gtk.CheckButton(label="Mark page as complete")
+        notebook.append_page(page1, Gtk.Label(label="Settings"))
+
+        page2 = Gtk.Box()
+        page2.set_border_width(20)
+        page2.add(Gtk.Label(label="Default Page!"))   
+        notebook.append_page(page2, Gtk.Label(label="Extensions"))
+        page3 = Gtk.Box()
+        page3.set_border_width(20)
+        page3.add(Gtk.Label(label="Default Page!"))
+        notebook.append_page(page3, Gtk.Label(label="Import/Export"))
+        page4 = Gtk.Box()
+        page4.set_border_width(20)
+        page4.add(Gtk.Label(label="A page with an image for a Title."))
+        notebook.append_page(page4, Gtk.Label(label="Help"))
+        self.complete.pack_start(notebook, False, False, 0)
+      
+        checkbutton = Gtk.CheckButton(label="Please confirm your changes to continue with the installation!")
         checkbutton.connect("toggled", self.on_complete_toggled)
-        self.complete.pack_start(checkbutton, False, False, 0)
+        self.complete.pack_start(checkbutton, False, False, 20)
 
         # -------------------------------------------------------------------------------------------------
 
@@ -293,6 +316,13 @@ class Assistant_EN(Gtk.Assistant):
         else :
             print("ERROR")
 
+    def on_switch_activated(self, switch, gparam):
+        if switch.get_active():
+            state = "on"
+        else:
+            state = "off"
+        print("Switch was turned", state)
+
     def on_complete_toggled(self, checkbutton):
         win1.set_page_complete(self.complete, checkbutton.get_active())
 
@@ -358,10 +388,6 @@ class Assistant_CZ(Gtk.Assistant):
 
         currency_combo.set_active(1)
         box.pack_end(currency_combo, False, False, 0)
-
-
-
-
         self.set_page_complete(box, True)
 
         # -------------------------------------------------------------------------------------------------
@@ -615,10 +641,6 @@ class Assistant_DE(Gtk.Assistant):
 
         currency_combo.set_active(2)
         box.pack_end(currency_combo, False, False, 0)
-
-
-
-
         self.set_page_complete(box, True)
 
         # -------------------------------------------------------------------------------------------------
@@ -872,10 +894,6 @@ class Assistant_ES(Gtk.Assistant):
 
         currency_combo.set_active(3)
         box.pack_end(currency_combo, False, False, 0)
-
-
-
-
         self.set_page_complete(box, True)
 
         # -------------------------------------------------------------------------------------------------
@@ -1129,10 +1147,6 @@ class Assistant_FR(Gtk.Assistant):
 
         currency_combo.set_active(4)
         box.pack_end(currency_combo, False, False, 0)
-
-
-
-
         self.set_page_complete(box, True)
 
         # -------------------------------------------------------------------------------------------------
@@ -1386,10 +1400,6 @@ class Assistant_IT(Gtk.Assistant):
 
         currency_combo.set_active(5)
         box.pack_end(currency_combo, False, False, 0)
-
-
-
-
         self.set_page_complete(box, True)
 
         # -------------------------------------------------------------------------------------------------
@@ -1643,10 +1653,6 @@ class Assistant_JP(Gtk.Assistant):
 
         currency_combo.set_active(6)
         box.pack_end(currency_combo, False, False, 0)
-
-
-
-
         self.set_page_complete(box, True)
 
         # -------------------------------------------------------------------------------------------------
@@ -1900,10 +1906,6 @@ class Assistant_KO(Gtk.Assistant):
 
         currency_combo.set_active(7)
         box.pack_end(currency_combo, False, False, 0)
-
-
-
-
         self.set_page_complete(box, True)
 
         # -------------------------------------------------------------------------------------------------
@@ -2157,10 +2159,6 @@ class Assistant_CN(Gtk.Assistant):
 
         currency_combo.set_active(8)
         box.pack_end(currency_combo, False, False, 0)
-
-
-
-
         self.set_page_complete(box, True)
 
         # -------------------------------------------------------------------------------------------------
