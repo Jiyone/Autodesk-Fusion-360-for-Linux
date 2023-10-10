@@ -1,4 +1,4 @@
-#!/usr/bin/python	
+#!/bin/bash
 
 ############################################################################################################################
 # Name:         Autodesk Fusion 360 - Setup Wizard (Linux)                                                                 #
@@ -7,2377 +7,958 @@
 # Author URI:   https://cryinkfly.com                                                                                      #
 # License:      MIT                                                                                                        #
 # Time/Date:    xx:xx/xx.xx.2023                                                                                           #
-# Version:      2.0.0                                                                                                      #
-# Requires:     "?" <-- Minimum for the installer!                                                                         #
+# Version:      1.9.0                                                                                                      #
+# Requires:     "dialog", "wget", "lsb-release", "coreutils", "glxinfo", "pkexec" <-- Minimum for the installer!           #
 # Optional:     Python version: "3.5<" and pip version: "20.3<" <-- Support Vosk (Speech recognition toolkit)              #
 ############################################################################################################################
 
-import gi
-import os
+###############################################################################################################################################################
+# IMPORTANT INFORMATION FOR USERS:                                                                                                                            #
+###############################################################################################################################################################
 
-gi.require_version("Gtk", "3.0")
-gi.require_version("Gdk", "3.0")
-from gi.repository import Gtk, Gdk, GLib
+# ...                                                                                                                                                         
+
+##############################################################################################################################################################################
+# CONFIGURATION OF THE COLOR SCHEME:                                                                                                                                         #
+##############################################################################################################################################################################
+
+function SP_LOAD_COLOR_SHEME {
+    RED=$'\033[0;31m'
+    YELLOW=$'\033[0;33m'
+    GREEN=$'\033[0;32m'
+    NOCOLOR=$'\033[0m'
+}
 
 ##############################################################################################################################################################################
 # CONFIGURATION OF THE DIRECTORY STRUCTURE:                                                                                                                                  #
 ##############################################################################################################################################################################
 
-os.system('mkdir -p $HOME/.fusion360/{bin,config,locale/{cs-CZ,de-DE,en-US,es-ES,fr-FR,it-IT,ja-JP,ko-KR,zh-CN},wineprefixes,resources/{css,extensions,graphics,music,downloads},logs,cache}')
+function SP_ADD_DIRECTORIES { 
+    SP_PATH="$HOME/.fusion360"
+    mkdir -p $SP_PATH/{bin,config,locale/{cs-CZ,de-DE,en-US,es-ES,fr-FR,it-IT,ja-JP,ko-KR,zh-CN},wineprefixes,resources/{extensions,graphics,music,downloads},logs,cache}
+}
 
 ##############################################################################################################################################################################
-# DOWNLOADING THE LICENSES OF THE LANGUAGES FOR THE INSTALLER:                                                                                                               #
+# RECORDING OF THE INSTALLATION:                                                                                                                                             #
 ##############################################################################################################################################################################
 
-os.system('curl -o $HOME/.fusion360/locale/cs-CZ/license-cs.txt https://raw.githubusercontent.com/cryinkfly/Autodesk-Fusion-360-for-Linux/main/files/builds/stable-branch/locale/cs-CZ/license-cs.txt')
-os.system('curl -o $HOME/.fusion360/locale/de-DE/license-de.txt https://raw.githubusercontent.com/cryinkfly/Autodesk-Fusion-360-for-Linux/main/files/builds/stable-branch/locale/de-DE/license-de.txt')
-os.system('curl -o $HOME/.fusion360/locale/en-US/license-en.txt https://raw.githubusercontent.com/cryinkfly/Autodesk-Fusion-360-for-Linux/main/files/builds/stable-branch/locale/en-US/license-en.txt')
-os.system('curl -o $HOME/.fusion360/locale/es-ES/license-es.txt https://raw.githubusercontent.com/cryinkfly/Autodesk-Fusion-360-for-Linux/main/files/builds/stable-branch/locale/es-ES/license-es.txt')
-os.system('curl -o $HOME/.fusion360/locale/fr-FR/license-fr.txt https://raw.githubusercontent.com/cryinkfly/Autodesk-Fusion-360-for-Linux/main/files/builds/stable-branch/locale/fr-FR/license-fr.txt')
-os.system('curl -o $HOME/.fusion360/locale/it-IT/license-it.txt https://raw.githubusercontent.com/cryinkfly/Autodesk-Fusion-360-for-Linux/main/files/builds/stable-branch/locale/it-IT/license-it.txt')
-os.system('curl -o $HOME/.fusion360/locale/ja-JP/license-ja.txt https://raw.githubusercontent.com/cryinkfly/Autodesk-Fusion-360-for-Linux/main/files/builds/stable-branch/locale/ja-JP/license-ja.txt')
-os.system('curl -o $HOME/.fusion360/locale/ko-KR/license-ko.txt https://raw.githubusercontent.com/cryinkfly/Autodesk-Fusion-360-for-Linux/main/files/builds/stable-branch/locale/ko-KR/license-ko.txt')
-os.system('curl -o $HOME/.fusion360/locale/zh-CN/license-zh.txt https://raw.githubusercontent.com/cryinkfly/Autodesk-Fusion-360-for-Linux/main/files/builds/stable-branch/locale/zh-CN/license-zh.txt')
+function SP_LOG_INSTALLATION {
+    exec 5> "$SP_PATH/logs/setupact.log"
+    BASH_XTRACEFD="5"
+    set -x
+}
 
 ##############################################################################################################################################################################
-# ALL DIALOGS ARE ARRANGED HERE:                                                                                                                                             #
+# CHECK THE REQUIRED PACKAGES FOR THE INSTALLER:                                                                                                                             #
 ##############################################################################################################################################################################
 
-#######################
-# win1 = Assistant_EN #
-##############################################################################################################################################################################
-
-class Assistant_EN(Gtk.Assistant):
-    def __init__(self):
-        Gtk.Assistant.__init__(self)
-        self.set_title("Autodesk Fusion 360 for Linux - Setup Assistant")
-        self.set_default_size(550, -1)
-        self.set_position(Gtk.WindowPosition.CENTER)
-        self.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("#ff6a01"))
-        self.connect("cancel", self.on_cancel_clicked)
-        self.connect("close", self.on_close_clicked)
-        self.connect("apply", self.on_apply_clicked)
-
-        screen = Gdk.Screen.get_default()
-        provider = Gtk.CssProvider()
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        provider.load_from_path('style.css')
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.set_homogeneous(False)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.INTRO)
-        self.set_page_title(box, "  Welcome  ")
-        label_0 = Gtk.Label(label="<span color='#0a171f' font-weight='bold' size='16000'>Welcome to the Autodesk Fusion 360 Installer for Linux</span>\n\n"
-                                "This setup wizard will help you install Autodesk Fusion 360 on your computer.\n\n"
-                                "- It is strongly recommended that you close all other applications before continuing with this installation.\n\n"
-                                "- In addition, an active internet connection is required in order to be able to obtain all the necessary packages.\n\n"
-                                "Click <span font-weight='semi-bold'>'Next'</span> to proceed. If you need to review or change any of your installation settings, click <span font-weight='semi-bold'>'Previous'</span>.\n\n"
-                                "Click <span font-weight='semi-bold'>'Cancel'</span> to cancel the installation and exit the wizard.")
-        label_0.set_use_markup (True)
-        label_0.set_line_wrap(True)
-        label_0.set_name('text')
-        box.pack_start(label_0, False, False, 0)
-
-        currencies = [
-            "English",
-            "Czech",
-            "German",
-            "Spanish",
-            "French",
-            "Italian",
-            "Japanese",
-            "Korean",
-            "Chinese",
-        ]
-        currency_combo = Gtk.ComboBoxText()
-        currency_combo.set_entry_text_column(0)
-        currency_combo.set_name('padding-left-bottom')
-        currency_combo.connect("changed", self.on_currency_combo_changed)
-        
-        for currency in currencies:
-            currency_combo.append_text(currency)
-
-        currency_combo.set_active(0)
-        box.pack_end(currency_combo, False, False, 0)
-
-
-
-
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.license = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.license)
-        self.set_page_type(self.license, Gtk.AssistantPageType.CONTENT)
-        self.set_page_title(self.license, "  License Agreement  ")
-        
-        open_license_text = open("../locale/en-US/license-en.txt", "r")
-        data_license_text = open_license_text.read()
-
-        scrolledwindow = Gtk.ScrolledWindow()
-        scrolledwindow.set_min_content_height(400)
-        self.license.pack_start(scrolledwindow, False, False, 0)
-      
-        label_1 = Gtk.Label(label=str(data_license_text))
-        label_1.set_use_markup (True)
-        label_1.set_line_wrap(True)
-        label_1.set_name('text') # assign CSS settings
-
-        scrolledwindow.add(label_1)
-        self.license.pack_start(label_1, False, False, 0) 
-
-        checkbutton = Gtk.CheckButton(label="I have read the terms and conditions and I accept them.")
-        checkbutton.set_name('text') # assign CSS settings
-        checkbutton.connect("toggled", self.on_license_toggled)
-        self.license.pack_start(checkbutton, False, False, 20)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.complete = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.complete)
-        self.set_page_type(self.complete, Gtk.AssistantPageType.PROGRESS)
-        self.set_page_title(self.complete, "  Customization  ")
-        label = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        self.complete.pack_start(label, False, False, 0)        
-
-        label1 = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label1.set_line_wrap(True)
-        label1.set_name('small') # assign CSS settings
-        self.complete.pack_start(label1, False, False, 0)
-
-        checkbutton = Gtk.CheckButton(label="Mark page as complete")
-        checkbutton.connect("toggled", self.on_complete_toggled)
-        self.complete.pack_start(checkbutton, False, False, 0)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.CONFIRM)
-        self.set_page_title(box, "  Installation  ")
-        label = Gtk.Label(label="The 'Confirm' page may be set as the final page in the Assistant, however this depends on what the Assistant does. This page provides an 'Apply' button to explicitly set the changes, or a 'Go Back' button to correct any mistakes.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.SUMMARY)
-        self.set_page_title(box, "  Summary  ")
-        label = Gtk.Label(label="A 'Summary' should be set as the final page of the Assistant if used however this depends on the purpose of your Assistant. It provides information on the changes that have been made during the configuration or details of what the user should do next. On this page only a Close button is displayed. Once at the Summary page, the user cannot return to any other page.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-    def on_apply_clicked(self, *args):
-        print("The 'Apply' button has been clicked")
-
-    def on_close_clicked(self, *args):
-        print("The 'Close' button has been clicked")
-        Gtk.main_quit()
-
-    def on_cancel_clicked(self, *args):
-        print("The Assistant has been cancelled.")
-        Gtk.main_quit()
-
-    def on_currency_combo_changed(self, combo):  
-        text = combo.get_active_text()
-        if text == "Czech":
-            print("CZ")  
-            win1.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win2.show_all()
-        elif text == "English":
-            print("EN")  
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win1.show_all()
-        elif text == "German":
-            print("DE")  
-            win1.hide()
-            win2.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win3.show_all()
-        elif text == "Spanish":
-            print("SP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win4.show_all()
-        elif text == "French":
-            print("FR")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win5.show_all()
-        elif text == "Italian":
-            print("IT")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win6.show_all()
-        elif text == "Japanese":
-            print("JP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win8.hide()
-            win9.hide()
-            win7.show_all()
-        elif text == "Korean":
-            print("KO")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win9.hide()
-            win8.show_all()
-        elif text == "Chinese":
-            print("CN")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.show_all()
-        else :
-            print("ERROR")
-
-    def on_complete_toggled(self, checkbutton):
-        win1.set_page_complete(self.complete, checkbutton.get_active())
-
-    def on_license_toggled(self, checkbutton):
-        win1.set_page_complete(self.license, checkbutton.get_active())
-
-
-#######################
-# win2 = Assistant_CZ #
-##############################################################################################################################################################################
-
-class Assistant_CZ(Gtk.Assistant):
-    def __init__(self):
-        Gtk.Assistant.__init__(self)
-        self.set_title("Autodesk Fusion 360 for Linux - Setup Assistant")
-        self.set_default_size(550, -1)
-        self.set_position(Gtk.WindowPosition.CENTER)
-        self.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("#ff6a01"))
-        self.connect("cancel", self.on_cancel_clicked)
-        self.connect("close", self.on_close_clicked)
-        self.connect("apply", self.on_apply_clicked)
-
-        screen = Gdk.Screen.get_default()
-        provider = Gtk.CssProvider()
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        provider.load_from_path('style.css')
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.set_homogeneous(False)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.INTRO)
-        self.set_page_title(box, "  Vítejte  ")
-        label_0 = Gtk.Label(label="<span color='#0a171f' font-weight='bold' size='16000'>Vítejte v instalačním programu Autodesk Fusion 360 pro Linux</span>\n\n"
-                                 "Tento průvodce nastavením vám pomůže nainstalovat Autodesk Fusion 360 do počítače.\n\n"
-                                 "- Před pokračováním v této instalaci důrazně doporučujeme zavřít všechny ostatní aplikace.\n\n"
-                                 "- Kromě toho je nutné aktivní připojení k internetu, abyste mohli získat všechny potřebné balíčky.\n\n"
-                                 "Pokračujte kliknutím na <span font-weight='semi-bold'>'Další'</span>. Pokud potřebujete zkontrolovat nebo změnit některá nastavení instalace, klikněte na <span font-weight='semi-bold'> 'Předchozí'</span>.\n\n"
-                                 "Kliknutím na <span font-weight='semi-bold'>'Storno'</span> zrušíte instalaci a ukončíte průvodce.")
-        label_0.set_use_markup (True)
-        label_0.set_line_wrap(True)
-        label_0.set_name('text')
-        box.pack_start(label_0, False, False, 0)
-
-        currencies = [
-            "English",
-            "Czech",
-            "German",
-            "Spanish",
-            "French",
-            "Italian",
-            "Japanese",
-            "Korean",
-            "Chinese",
-        ]
-        currency_combo = Gtk.ComboBoxText()
-        currency_combo.set_entry_text_column(0)
-        currency_combo.set_name('padding-left-bottom')
-        currency_combo.connect("changed", self.on_currency_combo_changed)
-        
-        for currency in currencies:
-            currency_combo.append_text(currency)
-
-        currency_combo.set_active(1)
-        box.pack_end(currency_combo, False, False, 0)
-
-
-
-
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.license = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.license)
-        self.set_page_type(self.license, Gtk.AssistantPageType.CONTENT)
-        self.set_page_title(self.license, "  Licenční smlouva  ")
-        
-        open_license_text = open("../locale/cs-CZ/license-cs.txt", "r")
-        data_license_text = open_license_text.read()
-
-        scrolledwindow = Gtk.ScrolledWindow()
-        scrolledwindow.set_min_content_height(400)
-        self.license.pack_start(scrolledwindow, False, False, 0)
-      
-        label_1 = Gtk.Label(label=str(data_license_text))
-        label_1.set_use_markup (True)
-        label_1.set_line_wrap(True)
-        label_1.set_name('text') # assign CSS settings
-
-        scrolledwindow.add(label_1)
-        self.license.pack_start(label_1, False, False, 0) 
-
-        checkbutton = Gtk.CheckButton(label="Přečetl jsem si podmínky a souhlasím s nimi.")
-        checkbutton.set_name('text') # assign CSS settings
-        checkbutton.connect("toggled", self.on_license_toggled)
-        self.license.pack_start(checkbutton, False, False, 20)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.complete = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.complete)
-        self.set_page_type(self.complete, Gtk.AssistantPageType.PROGRESS)
-        self.set_page_title(self.complete, "  Přizpůsobení  ")
-        label = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        self.complete.pack_start(label, False, False, 0)        
-
-        label1 = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label1.set_line_wrap(True)
-        label1.set_name('small') # assign CSS settings
-        self.complete.pack_start(label1, False, False, 0)
-
-        checkbutton = Gtk.CheckButton(label="Mark page as complete")
-        checkbutton.connect("toggled", self.on_complete_toggled)
-        self.complete.pack_start(checkbutton, False, False, 0)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.CONFIRM)
-        self.set_page_title(box, "  Instalace  ")
-        label = Gtk.Label(label="The 'Confirm' page may be set as the final page in the Assistant, however this depends on what the Assistant does. This page provides an 'Apply' button to explicitly set the changes, or a 'Go Back' button to correct any mistakes.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.SUMMARY)
-        self.set_page_title(box, "  Shrnutí  ")
-        label = Gtk.Label(label="A 'Summary' should be set as the final page of the Assistant if used however this depends on the purpose of your Assistant. It provides information on the changes that have been made during the configuration or details of what the user should do next. On this page only a Close button is displayed. Once at the Summary page, the user cannot return to any other page.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-    def on_apply_clicked(self, *args):
-        print("The 'Apply' button has been clicked")
-
-    def on_close_clicked(self, *args):
-        print("The 'Close' button has been clicked")
-        Gtk.main_quit()
-
-    def on_cancel_clicked(self, *args):
-        print("The Assistant has been cancelled.")
-        Gtk.main_quit()
-
-    def on_currency_combo_changed(self, combo):  
-        text = combo.get_active_text()
-        if text == "Czech":
-            print("CZ")  
-            win1.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win2.show_all()
-        elif text == "English":
-            print("EN")  
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win1.show_all()
-        elif text == "German":
-            print("DE")  
-            win1.hide()
-            win2.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win3.show_all()
-        elif text == "Spanish":
-            print("SP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win4.show_all()
-        elif text == "French":
-            print("FR")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win5.show_all()
-        elif text == "Italian":
-            print("IT")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win6.show_all()
-        elif text == "Japanese":
-            print("JP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win8.hide()
-            win9.hide()
-            win7.show_all()
-        elif text == "Korean":
-            print("KO")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win9.hide()
-            win8.show_all()
-        elif text == "Chinese":
-            print("CN")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.show_all()
-        else :
-            print("ERROR")
-
-    def on_complete_toggled(self, checkbutton):
-        win2.set_page_complete(self.complete, checkbutton.get_active())
-
-    def on_license_toggled(self, checkbutton):
-        win2.set_page_complete(self.license, checkbutton.get_active())
-
-
-# #####################
-# win3 = Assistant_DE #
-##############################################################################################################################################################################
-
-class Assistant_DE(Gtk.Assistant):
-    def __init__(self):
-        Gtk.Assistant.__init__(self)
-        self.set_title("Autodesk Fusion 360 for Linux - Setup Assistant")
-        self.set_default_size(550, -1)
-        self.set_position(Gtk.WindowPosition.CENTER)
-        self.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("#ff6a01"))
-        self.connect("cancel", self.on_cancel_clicked)
-        self.connect("close", self.on_close_clicked)
-        self.connect("apply", self.on_apply_clicked)
-
-        screen = Gdk.Screen.get_default()
-        provider = Gtk.CssProvider()
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        provider.load_from_path('style.css')
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.set_homogeneous(False)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.INTRO)
-        self.set_page_title(box, "  Willkommen  ")
-        label_0 = Gtk.Label(label="<span color='#0a171f' font-weight='bold' size='16000'>Willkommen beim Autodesk Fusion 360 Installer für Linux</span>\n\n"
-                                 "Dieser Setup-Assistent hilft Ihnen bei der Installation von Autodesk Fusion 360 auf Ihrem Computer.\n\n"
-                                 "- Es wird dringend empfohlen, alle anderen Anwendungen zu schließen, bevor Sie mit dieser Installation fortfahren.\n\n"
-                                 "- Darüber hinaus ist eine aktive Internetverbindung erforderlich, um alle notwendigen Pakete beziehen zu können.\n\n"
-                                 "Klicken Sie auf <span font-weight='semi-bold'>'Weiter'</span>, um fortzufahren. Wenn Sie Ihre Installationseinstellungen überprüfen oder ändern müssen, klicken Sie auf <span font-weight='semi-bold'> 'Zurück'</span>.\n\n"
-                                 "Klicken Sie auf <span font-weight='semi-bold'>'Abbrechen'</span>, um die Installation abzubrechen und den Assistenten zu verlassen.")
-        label_0.set_use_markup (True)
-        label_0.set_line_wrap(True)
-        label_0.set_name('text')
-        box.pack_start(label_0, False, False, 0)
-
-        currencies = [
-            "English",
-            "Czech",
-            "German",
-            "Spanish",
-            "French",
-            "Italian",
-            "Japanese",
-            "Korean",
-            "Chinese",
-        ]
-        currency_combo = Gtk.ComboBoxText()
-        currency_combo.set_entry_text_column(0)
-        currency_combo.set_name('padding-left-bottom')
-        currency_combo.connect("changed", self.on_currency_combo_changed)
-        
-        for currency in currencies:
-            currency_combo.append_text(currency)
-
-        currency_combo.set_active(2)
-        box.pack_end(currency_combo, False, False, 0)
-
-
-
-
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.license = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.license)
-        self.set_page_type(self.license, Gtk.AssistantPageType.CONTENT)
-        self.set_page_title(self.license, "  Lizenzvereinbarung  ")
-        
-        open_license_text = open("../locale/de-DE/license-de.txt", "r")
-        data_license_text = open_license_text.read()
-
-        scrolledwindow = Gtk.ScrolledWindow()
-        scrolledwindow.set_min_content_height(400)
-        self.license.pack_start(scrolledwindow, False, False, 0)
-      
-        label_1 = Gtk.Label(label=str(data_license_text))
-        label_1.set_use_markup (True)
-        label_1.set_line_wrap(True)
-        label_1.set_name('text') # assign CSS settings
-
-        scrolledwindow.add(label_1)
-        self.license.pack_start(label_1, False, False, 0) 
-
-        checkbutton = Gtk.CheckButton(label="Ich habe die Lizenzbestimmungen gelesen und akzeptiere diese.")
-        checkbutton.set_name('text') # assign CSS settings
-        checkbutton.connect("toggled", self.on_license_toggled)
-        self.license.pack_start(checkbutton, False, False, 20)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.complete = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.complete)
-        self.set_page_type(self.complete, Gtk.AssistantPageType.PROGRESS)
-        self.set_page_title(self.complete, "  Individualisierung  ")
-        label = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        self.complete.pack_start(label, False, False, 0)        
-
-        label1 = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label1.set_line_wrap(True)
-        label1.set_name('small') # assign CSS settings
-        self.complete.pack_start(label1, False, False, 0)
-
-        checkbutton = Gtk.CheckButton(label="Mark page as complete")
-        checkbutton.connect("toggled", self.on_complete_toggled)
-        self.complete.pack_start(checkbutton, False, False, 0)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.CONFIRM)
-        self.set_page_title(box, "  Installation  ")
-        label = Gtk.Label(label="The 'Confirm' page may be set as the final page in the Assistant, however this depends on what the Assistant does. This page provides an 'Apply' button to explicitly set the changes, or a 'Go Back' button to correct any mistakes.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.SUMMARY)
-        self.set_page_title(box, "  Zusammenfassung  ")
-        label = Gtk.Label(label="A 'Summary' should be set as the final page of the Assistant if used however this depends on the purpose of your Assistant. It provides information on the changes that have been made during the configuration or details of what the user should do next. On this page only a Close button is displayed. Once at the Summary page, the user cannot return to any other page.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-    def on_apply_clicked(self, *args):
-        print("The 'Apply' button has been clicked")
-
-    def on_close_clicked(self, *args):
-        print("The 'Close' button has been clicked")
-        Gtk.main_quit()
-
-    def on_cancel_clicked(self, *args):
-        print("The Assistant has been cancelled.")
-        Gtk.main_quit()
-
-    def on_currency_combo_changed(self, combo):  
-        text = combo.get_active_text()
-        if text == "Czech":
-            print("CZ")  
-            win1.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win2.show_all()
-        elif text == "English":
-            print("EN")  
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win1.show_all()
-        elif text == "German":
-            print("DE")  
-            win1.hide()
-            win2.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win3.show_all()
-        elif text == "Spanish":
-            print("SP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win4.show_all()
-        elif text == "French":
-            print("FR")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win5.show_all()
-        elif text == "Italian":
-            print("IT")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win6.show_all()
-        elif text == "Japanese":
-            print("JP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win8.hide()
-            win9.hide()
-            win7.show_all()
-        elif text == "Korean":
-            print("KO")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win9.hide()
-            win8.show_all()
-        elif text == "Chinese":
-            print("CN")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.show_all()
-        else :
-            print("ERROR")
-
-    def on_complete_toggled(self, checkbutton):
-        win3.set_page_complete(self.complete, checkbutton.get_active())
-
-    def on_license_toggled(self, checkbutton):
-        win3.set_page_complete(self.license, checkbutton.get_active())
-
-
-#######################
-# win4 = Assistant_ES #
-##############################################################################################################################################################################
-
-class Assistant_ES(Gtk.Assistant):
-    def __init__(self):
-        Gtk.Assistant.__init__(self)
-        self.set_title("Autodesk Fusion 360 for Linux - Setup Assistant")
-        self.set_default_size(550, -1)
-        self.set_position(Gtk.WindowPosition.CENTER)
-        self.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("#ff6a01"))
-        self.connect("cancel", self.on_cancel_clicked)
-        self.connect("close", self.on_close_clicked)
-        self.connect("apply", self.on_apply_clicked)
-
-        screen = Gdk.Screen.get_default()
-        provider = Gtk.CssProvider()
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        provider.load_from_path('style.css')
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.set_homogeneous(False)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.INTRO)
-        self.set_page_title(box, "  Bienvenido  ")
-        label_0 = Gtk.Label(label="<span color='#0a171f' font-weight='bold' size='16000'>Bienvenido al instalador de Autodesk Fusion 360 para Linux</span>\n\n"
-                                 "Este asistente de configuración le ayudará a instalar Autodesk Fusion 360 en su computadora.\n\n"
-                                 "- Se recomienda encarecidamente que cierre todas las demás aplicaciones antes de continuar con esta instalación.\n\n"
-                                 "- Además, se requiere una conexión a Internet activa para poder obtener todos los paquetes necesarios.\n\n"
-                                 "Haga clic en <span font-weight='semi-bold'>'Siguiente'</span> para continuar. Si necesita revisar o cambiar alguna de las configuraciones de instalación, haga clic en <span font-weight='semi-bold'> 'Anterior'</span>.\n\n"
-                                 "Haga clic en <span font-weight='semi-bold'>'Cancelar'</span> para cancelar la instalación y salir del asistente.")
-        label_0.set_use_markup (True)
-        label_0.set_line_wrap(True)
-        label_0.set_name('text')
-        box.pack_start(label_0, False, False, 0)
-
-        currencies = [
-            "English",
-            "Czech",
-            "German",
-            "Spanish",
-            "French",
-            "Italian",
-            "Japanese",
-            "Korean",
-            "Chinese",
-        ]
-        currency_combo = Gtk.ComboBoxText()
-        currency_combo.set_entry_text_column(0)
-        currency_combo.set_name('padding-left-bottom')
-        currency_combo.connect("changed", self.on_currency_combo_changed)
-        
-        for currency in currencies:
-            currency_combo.append_text(currency)
-
-        currency_combo.set_active(3)
-        box.pack_end(currency_combo, False, False, 0)
-
-
-
-
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.license = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.license)
-        self.set_page_type(self.license, Gtk.AssistantPageType.CONTENT)
-        self.set_page_title(self.license, "  Acuerdo de licencia  ")
-        
-        open_license_text = open("../locale/ja-JP/license-ja.txt", "r")
-        data_license_text = open_license_text.read()
-
-        scrolledwindow = Gtk.ScrolledWindow()
-        scrolledwindow.set_min_content_height(400)
-        self.license.pack_start(scrolledwindow, False, False, 0)
-      
-        label_1 = Gtk.Label(label=str(data_license_text))
-        label_1.set_use_markup (True)
-        label_1.set_line_wrap(True)
-        label_1.set_name('text') # assign CSS settings
-
-        scrolledwindow.add(label_1)
-        self.license.pack_start(label_1, False, False, 0) 
-
-        checkbutton = Gtk.CheckButton(label="He leído los términos y condiciones y los acepto.")
-        checkbutton.set_name('text') # assign CSS settings
-        checkbutton.connect("toggled", self.on_license_toggled)
-        self.license.pack_start(checkbutton, False, False, 20)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.complete = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.complete)
-        self.set_page_type(self.complete, Gtk.AssistantPageType.PROGRESS)
-        self.set_page_title(self.complete, "  Personalización  ")
-        label = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        self.complete.pack_start(label, False, False, 0)        
-
-        label1 = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label1.set_line_wrap(True)
-        label1.set_name('small') # assign CSS settings
-        self.complete.pack_start(label1, False, False, 0)
-
-        checkbutton = Gtk.CheckButton(label="Mark page as complete")
-        checkbutton.connect("toggled", self.on_complete_toggled)
-        self.complete.pack_start(checkbutton, False, False, 0)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.CONFIRM)
-        self.set_page_title(box, "  Instalación  ")
-        label = Gtk.Label(label="The 'Confirm' page may be set as the final page in the Assistant, however this depends on what the Assistant does. This page provides an 'Apply' button to explicitly set the changes, or a 'Go Back' button to correct any mistakes.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.SUMMARY)
-        self.set_page_title(box, "  Sumario  ")
-        label = Gtk.Label(label="A 'Summary' should be set as the final page of the Assistant if used however this depends on the purpose of your Assistant. It provides information on the changes that have been made during the configuration or details of what the user should do next. On this page only a Close button is displayed. Once at the Summary page, the user cannot return to any other page.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-    def on_apply_clicked(self, *args):
-        print("The 'Apply' button has been clicked")
-
-    def on_close_clicked(self, *args):
-        print("The 'Close' button has been clicked")
-        Gtk.main_quit()
-
-    def on_cancel_clicked(self, *args):
-        print("The Assistant has been cancelled.")
-        Gtk.main_quit()
-
-    def on_currency_combo_changed(self, combo):  
-        text = combo.get_active_text()
-        if text == "Czech":
-            print("CZ")  
-            win1.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win2.show_all()
-        elif text == "English":
-            print("EN")  
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win1.show_all()
-        elif text == "German":
-            print("DE")  
-            win1.hide()
-            win2.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win3.show_all()
-        elif text == "Spanish":
-            print("SP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win4.show_all()
-        elif text == "French":
-            print("FR")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win5.show_all()
-        elif text == "Italian":
-            print("IT")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win6.show_all()
-        elif text == "Japanese":
-            print("JP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win8.hide()
-            win9.hide()
-            win7.show_all()
-        elif text == "Korean":
-            print("KO")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win9.hide()
-            win8.show_all()
-        elif text == "Chinese":
-            print("CN")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.show_all()
-        else :
-            print("ERROR")
-
-    def on_complete_toggled(self, checkbutton):
-        win4.set_page_complete(self.complete, checkbutton.get_active())
-
-    def on_license_toggled(self, checkbutton):
-        win4.set_page_complete(self.license, checkbutton.get_active())
-
-
-#######################
-# win5 = Assistant_FR #
-##############################################################################################################################################################################
-
-class Assistant_FR(Gtk.Assistant):
-    def __init__(self):
-        Gtk.Assistant.__init__(self)
-        self.set_title("Autodesk Fusion 360 for Linux - Setup Assistant")
-        self.set_default_size(550, -1)
-        self.set_position(Gtk.WindowPosition.CENTER)
-        self.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("#ff6a01"))
-        self.connect("cancel", self.on_cancel_clicked)
-        self.connect("close", self.on_close_clicked)
-        self.connect("apply", self.on_apply_clicked)
-
-        screen = Gdk.Screen.get_default()
-        provider = Gtk.CssProvider()
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        provider.load_from_path('style.css')
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.set_homogeneous(False)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.INTRO)
-        self.set_page_title(box, "  Accueil  ")
-        label_0 = Gtk.Label(label="<span color='#0a171f' font-weight='bold' size='16000'>Bienvenue dans le programme d'installation d'Autodesk Fusion 360 pour Linux</span>\n\n"
-                                 "Cet assistant de configuration vous aidera à installer Autodesk Fusion 360 sur votre ordinateur.\n\n"
-                                 "- Il est fortement recommandé de fermer toutes les autres applications avant de poursuivre cette installation.\n\n"
-                                 "- De plus, une connexion Internet active est requise afin de pouvoir obtenir tous les packages nécessaires.\n\n"
-                                 "Cliquez sur <span font-weight='semi-bold'>'Suivant'</span> pour continuer. Si vous devez revoir ou modifier l'un de vos paramètres d'installation, cliquez sur <span font-weight='semi-bold'> 'Précédent'</span>.\n\n"
-                                 "Cliquez sur <span font-weight='semi-bold'>'Annuler'</span> pour annuler l'installation et quitter l'assistant.")
-        label_0.set_use_markup (True)
-        label_0.set_line_wrap(True)
-        label_0.set_name('text')
-        box.pack_start(label_0, False, False, 0)
-
-        currencies = [
-            "English",
-            "Czech",
-            "German",
-            "Spanish",
-            "French",
-            "Italian",
-            "Japanese",
-            "Korean",
-            "Chinese",
-        ]
-        currency_combo = Gtk.ComboBoxText()
-        currency_combo.set_entry_text_column(0)
-        currency_combo.set_name('padding-left-bottom')
-        currency_combo.connect("changed", self.on_currency_combo_changed)
-        
-        for currency in currencies:
-            currency_combo.append_text(currency)
-
-        currency_combo.set_active(4)
-        box.pack_end(currency_combo, False, False, 0)
-
-
-
-
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.license = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.license)
-        self.set_page_type(self.license, Gtk.AssistantPageType.CONTENT)
-        self.set_page_title(self.license, "  Accord de licence  ")
-        
-        open_license_text = open("../locale/fr-FR/license-fr.txt", "r")
-        data_license_text = open_license_text.read()
-
-        scrolledwindow = Gtk.ScrolledWindow()
-        scrolledwindow.set_min_content_height(400)
-        self.license.pack_start(scrolledwindow, False, False, 0)
-      
-        label_1 = Gtk.Label(label=str(data_license_text))
-        label_1.set_use_markup (True)
-        label_1.set_line_wrap(True)
-        label_1.set_name('text') # assign CSS settings
-
-        scrolledwindow.add(label_1)
-        self.license.pack_start(label_1, False, False, 0) 
-
-        checkbutton = Gtk.CheckButton(label="J'ai lu les termes et conditions et je les accepte.")
-        checkbutton.set_name('text') # assign CSS settings
-        checkbutton.connect("toggled", self.on_license_toggled)
-        self.license.pack_start(checkbutton, False, False, 20)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.complete = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.complete)
-        self.set_page_type(self.complete, Gtk.AssistantPageType.PROGRESS)
-        self.set_page_title(self.complete, "  Personnalisation  ")
-        label = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        self.complete.pack_start(label, False, False, 0)        
-
-        label1 = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label1.set_line_wrap(True)
-        label1.set_name('small') # assign CSS settings
-        self.complete.pack_start(label1, False, False, 0)
-
-        checkbutton = Gtk.CheckButton(label="Mark page as complete")
-        checkbutton.connect("toggled", self.on_complete_toggled)
-        self.complete.pack_start(checkbutton, False, False, 0)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.CONFIRM)
-        self.set_page_title(box, "  Installation  ")
-        label = Gtk.Label(label="The 'Confirm' page may be set as the final page in the Assistant, however this depends on what the Assistant does. This page provides an 'Apply' button to explicitly set the changes, or a 'Go Back' button to correct any mistakes.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.SUMMARY)
-        self.set_page_title(box, "  Sommaire  ")
-        label = Gtk.Label(label="A 'Summary' should be set as the final page of the Assistant if used however this depends on the purpose of your Assistant. It provides information on the changes that have been made during the configuration or details of what the user should do next. On this page only a Close button is displayed. Once at the Summary page, the user cannot return to any other page.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-    def on_apply_clicked(self, *args):
-        print("The 'Apply' button has been clicked")
-
-    def on_close_clicked(self, *args):
-        print("The 'Close' button has been clicked")
-        Gtk.main_quit()
-
-    def on_cancel_clicked(self, *args):
-        print("The Assistant has been cancelled.")
-        Gtk.main_quit()
-
-    def on_currency_combo_changed(self, combo):  
-        text = combo.get_active_text()
-        if text == "Czech":
-            print("CZ")  
-            win1.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win2.show_all()
-        elif text == "English":
-            print("EN")  
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win1.show_all()
-        elif text == "German":
-            print("DE")  
-            win1.hide()
-            win2.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win3.show_all()
-        elif text == "Spanish":
-            print("SP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win4.show_all()
-        elif text == "French":
-            print("FR")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win5.show_all()
-        elif text == "Italian":
-            print("IT")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win6.show_all()
-        elif text == "Japanese":
-            print("JP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win8.hide()
-            win9.hide()
-            win7.show_all()
-        elif text == "Korean":
-            print("KO")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win9.hide()
-            win8.show_all()
-        elif text == "Chinese":
-            print("CN")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.show_all()
-        else :
-            print("ERROR")
-
-    def on_complete_toggled(self, checkbutton):
-        win5.set_page_complete(self.complete, checkbutton.get_active())
-
-    def on_license_toggled(self, checkbutton):
-        win5.set_page_complete(self.license, checkbutton.get_active())
-
-
-#######################
-# win6 = Assistant_IT #
-##############################################################################################################################################################################
-
-class Assistant_IT(Gtk.Assistant):
-    def __init__(self):
-        Gtk.Assistant.__init__(self)
-        self.set_title("Autodesk Fusion 360 for Linux - Setup Assistant")
-        self.set_default_size(550, -1)
-        self.set_position(Gtk.WindowPosition.CENTER)
-        self.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("#ff6a01"))
-        self.connect("cancel", self.on_cancel_clicked)
-        self.connect("close", self.on_close_clicked)
-        self.connect("apply", self.on_apply_clicked)
-
-        screen = Gdk.Screen.get_default()
-        provider = Gtk.CssProvider()
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        provider.load_from_path('style.css')
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.set_homogeneous(False)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.INTRO)
-        self.set_page_title(box, "  Benvenuto  ")
-        label_0 = Gtk.Label(label="<span color='#0a171f' font-weight='bold' size='16000'>Benvenuti nel programma di installazione di Autodesk Fusion 360 per Linux</span>\n\n"
-                                 "Questa configurazione guidata ti aiuterà a installare Autodesk Fusion 360 sul tuo computer.\n\n"
-                                 "- Si consiglia vivamente di chiudere tutte le altre applicazioni prima di continuare con questa installazione.\n\n"
-                                 "- Inoltre è necessaria una connessione Internet attiva per poter ottenere tutti i pacchetti necessari.\n\n"
-                                 "Fai clic su <span font-weight='semi-bold'>'Avanti'</span> per procedere. Se devi rivedere o modificare le impostazioni di installazione, fai clic su <span font-weight='semi-bold'> 'Precedente'</span>.\n\n"
-                                 "Fai clic su <span font-weight='semi-bold'>'Annulla'</span> per annullare l'installazione e uscire dalla procedura guidata.")
-        label_0.set_use_markup (True)
-        label_0.set_line_wrap(True)
-        label_0.set_name('text')
-        box.pack_start(label_0, False, False, 0)
-
-        currencies = [
-            "English",
-            "Czech",
-            "German",
-            "Spanish",
-            "French",
-            "Italian",
-            "Japanese",
-            "Korean",
-            "Chinese",
-        ]
-        currency_combo = Gtk.ComboBoxText()
-        currency_combo.set_entry_text_column(0)
-        currency_combo.set_name('padding-left-bottom')
-        currency_combo.connect("changed", self.on_currency_combo_changed)
-        
-        for currency in currencies:
-            currency_combo.append_text(currency)
-
-        currency_combo.set_active(5)
-        box.pack_end(currency_combo, False, False, 0)
-
-
-
-
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.license = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.license)
-        self.set_page_type(self.license, Gtk.AssistantPageType.CONTENT)
-        self.set_page_title(self.license, "  Contratto di licenza  ")
-        
-        open_license_text = open("../locale/it-IT/license-it.txt", "r")
-        data_license_text = open_license_text.read()
-
-        scrolledwindow = Gtk.ScrolledWindow()
-        scrolledwindow.set_min_content_height(400)
-        self.license.pack_start(scrolledwindow, False, False, 0)
-      
-        label_1 = Gtk.Label(label=str(data_license_text))
-        label_1.set_use_markup (True)
-        label_1.set_line_wrap(True)
-        label_1.set_name('text') # assign CSS settings
-
-        scrolledwindow.add(label_1)
-        self.license.pack_start(label_1, False, False, 0) 
-
-        checkbutton = Gtk.CheckButton(label="Ho letto i termini e le condizioni e li accetto.")
-        checkbutton.set_name('text') # assign CSS settings
-        checkbutton.connect("toggled", self.on_license_toggled)
-        self.license.pack_start(checkbutton, False, False, 20)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.complete = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.complete)
-        self.set_page_type(self.complete, Gtk.AssistantPageType.PROGRESS)
-        self.set_page_title(self.complete, "  Personalizzazione  ")
-        label = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        self.complete.pack_start(label, False, False, 0)        
-
-        label1 = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label1.set_line_wrap(True)
-        label1.set_name('small') # assign CSS settings
-        self.complete.pack_start(label1, False, False, 0)
-
-        checkbutton = Gtk.CheckButton(label="Mark page as complete")
-        checkbutton.connect("toggled", self.on_complete_toggled)
-        self.complete.pack_start(checkbutton, False, False, 0)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.CONFIRM)
-        self.set_page_title(box, "  Installazione  ")
-        label = Gtk.Label(label="The 'Confirm' page may be set as the final page in the Assistant, however this depends on what the Assistant does. This page provides an 'Apply' button to explicitly set the changes, or a 'Go Back' button to correct any mistakes.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.SUMMARY)
-        self.set_page_title(box, "  Sommario  ")
-        label = Gtk.Label(label="A 'Summary' should be set as the final page of the Assistant if used however this depends on the purpose of your Assistant. It provides information on the changes that have been made during the configuration or details of what the user should do next. On this page only a Close button is displayed. Once at the Summary page, the user cannot return to any other page.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-    def on_apply_clicked(self, *args):
-        print("The 'Apply' button has been clicked")
-
-    def on_close_clicked(self, *args):
-        print("The 'Close' button has been clicked")
-        Gtk.main_quit()
-
-    def on_cancel_clicked(self, *args):
-        print("The Assistant has been cancelled.")
-        Gtk.main_quit()
-
-    def on_currency_combo_changed(self, combo):  
-        text = combo.get_active_text()
-        if text == "Czech":
-            print("CZ")  
-            win1.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win2.show_all()
-        elif text == "English":
-            print("EN")  
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win1.show_all()
-        elif text == "German":
-            print("DE")  
-            win1.hide()
-            win2.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win3.show_all()
-        elif text == "Spanish":
-            print("SP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win4.show_all()
-        elif text == "French":
-            print("FR")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win5.show_all()
-        elif text == "Italian":
-            print("IT")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win6.show_all()
-        elif text == "Japanese":
-            print("JP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win8.hide()
-            win9.hide()
-            win7.show_all()
-        elif text == "Korean":
-            print("KO")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win9.hide()
-            win8.show_all()
-        elif text == "Chinese":
-            print("CN")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.show_all()
-        else :
-            print("ERROR")
-
-    def on_complete_toggled(self, checkbutton):
-        win6.set_page_complete(self.complete, checkbutton.get_active())
-
-    def on_license_toggled(self, checkbutton):
-        win6.set_page_complete(self.license, checkbutton.get_active())
-
-
-#######################
-# win7 = Assistant_JP #
-##############################################################################################################################################################################
-
-class Assistant_JP(Gtk.Assistant):
-    def __init__(self):
-        Gtk.Assistant.__init__(self)
-        self.set_title("Autodesk Fusion 360 for Linux - Setup Assistant")
-        self.set_default_size(550, -1)
-        self.set_position(Gtk.WindowPosition.CENTER)
-        self.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("#ff6a01"))
-        self.connect("cancel", self.on_cancel_clicked)
-        self.connect("close", self.on_close_clicked)
-        self.connect("apply", self.on_apply_clicked)
-
-        screen = Gdk.Screen.get_default()
-        provider = Gtk.CssProvider()
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        provider.load_from_path('style.css')
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.set_homogeneous(False)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.INTRO)
-        self.set_page_title(box, "  いらっしゃいませ  ")
-        label_0 = Gtk.Label(label="<span color='#0a171f' font-weight='bold' size='16000'>Linux 用 Autodesk Fusion 360 インストーラへようこそ</span>\n\n"
-                                 "このセットアップ ウィザードは、Autodesk Fusion 360 をコンピュータにインストールするのに役立ちます。\n\n"
-                                 "- このインストールを続行する前に、他のアプリケーションをすべて閉じることを強くお勧めします。\n\n"
-                                 "- さらに、必要なパッケージをすべて入手するには、アクティブなインターネット接続が必要です。\n\n"
-                                 "「<span font-weight='semi-bold'>[次へ]</span> をクリックして続行します。インストール設定を確認または変更する必要がある場合は、<span font-weight='semi-bold'> をクリックしてください 「前」</span>。\n\n"
-                                 "「インストールをキャンセルしてウィザードを終了するには、<span font-weight='semi-bold'>[キャンセル]</span> をクリックしてください。」")
-        label_0.set_use_markup (True)
-        label_0.set_line_wrap(True)
-        label_0.set_name('text')
-        box.pack_start(label_0, False, False, 0)
-
-        currencies = [
-            "English",
-            "Czech",
-            "German",
-            "Spanish",
-            "French",
-            "Italian",
-            "Japanese",
-            "Korean",
-            "Chinese",
-        ]
-        currency_combo = Gtk.ComboBoxText()
-        currency_combo.set_entry_text_column(0)
-        currency_combo.set_name('padding-left-bottom')
-        currency_combo.connect("changed", self.on_currency_combo_changed)
-        
-        for currency in currencies:
-            currency_combo.append_text(currency)
-
-        currency_combo.set_active(6)
-        box.pack_end(currency_combo, False, False, 0)
-
-
-
-
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.license = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.license)
-        self.set_page_type(self.license, Gtk.AssistantPageType.CONTENT)
-        self.set_page_title(self.license, "  ライセンス契約  ")
-        
-        open_license_text = open("../locale/ja-JP/license-ja.txt", "r")
-        data_license_text = open_license_text.read()
-
-        scrolledwindow = Gtk.ScrolledWindow()
-        scrolledwindow.set_min_content_height(400)
-        self.license.pack_start(scrolledwindow, False, False, 0)
-      
-        label_1 = Gtk.Label(label=str(data_license_text))
-        label_1.set_use_markup (True)
-        label_1.set_line_wrap(True)
-        label_1.set_name('text') # assign CSS settings
-
-        scrolledwindow.add(label_1)
-        self.license.pack_start(label_1, False, False, 0) 
-
-        checkbutton = Gtk.CheckButton(label="利用規約を読み、同意します。")
-        checkbutton.set_name('text') # assign CSS settings
-        checkbutton.connect("toggled", self.on_license_toggled)
-        self.license.pack_start(checkbutton, False, False, 20)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.complete = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.complete)
-        self.set_page_type(self.complete, Gtk.AssistantPageType.PROGRESS)
-        self.set_page_title(self.complete, "  カスタマイズ  ")
-        label = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        self.complete.pack_start(label, False, False, 0)        
-
-        label1 = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label1.set_line_wrap(True)
-        label1.set_name('small') # assign CSS settings
-        self.complete.pack_start(label1, False, False, 0)
-
-        checkbutton = Gtk.CheckButton(label="Mark page as complete")
-        checkbutton.connect("toggled", self.on_complete_toggled)
-        self.complete.pack_start(checkbutton, False, False, 0)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.CONFIRM)
-        self.set_page_title(box, "  インストール  ")
-        label = Gtk.Label(label="The 'Confirm' page may be set as the final page in the Assistant, however this depends on what the Assistant does. This page provides an 'Apply' button to explicitly set the changes, or a 'Go Back' button to correct any mistakes.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.SUMMARY)
-        self.set_page_title(box, "  まとめ  ")
-        label = Gtk.Label(label="A 'Summary' should be set as the final page of the Assistant if used however this depends on the purpose of your Assistant. It provides information on the changes that have been made during the configuration or details of what the user should do next. On this page only a Close button is displayed. Once at the Summary page, the user cannot return to any other page.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-    def on_apply_clicked(self, *args):
-        print("The 'Apply' button has been clicked")
-
-    def on_close_clicked(self, *args):
-        print("The 'Close' button has been clicked")
-        Gtk.main_quit()
-
-    def on_cancel_clicked(self, *args):
-        print("The Assistant has been cancelled.")
-        Gtk.main_quit()
-
-    def on_currency_combo_changed(self, combo):  
-        text = combo.get_active_text()
-        if text == "Czech":
-            print("CZ")  
-            win1.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win2.show_all()
-        elif text == "English":
-            print("EN")  
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win1.show_all()
-        elif text == "German":
-            print("DE")  
-            win1.hide()
-            win2.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win3.show_all()
-        elif text == "Spanish":
-            print("SP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win4.show_all()
-        elif text == "French":
-            print("FR")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win5.show_all()
-        elif text == "Italian":
-            print("IT")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win6.show_all()
-        elif text == "Japanese":
-            print("JP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win8.hide()
-            win9.hide()
-            win7.show_all()
-        elif text == "Korean":
-            print("KO")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win9.hide()
-            win8.show_all()
-        elif text == "Chinese":
-            print("CN")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.show_all()
-        else :
-            print("ERROR")
-
-    def on_complete_toggled(self, checkbutton):
-        win7.set_page_complete(self.complete, checkbutton.get_active())
-
-    def on_license_toggled(self, checkbutton):
-        win7.set_page_complete(self.license, checkbutton.get_active())
-
-
-#######################
-# win8 = Assistant_KO #
-##############################################################################################################################################################################
-
-class Assistant_KO(Gtk.Assistant):
-    def __init__(self):
-        Gtk.Assistant.__init__(self)
-        self.set_title("Autodesk Fusion 360 for Linux - Setup Assistant")
-        self.set_default_size(550, -1)
-        self.set_position(Gtk.WindowPosition.CENTER)
-        self.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("#ff6a01"))
-        self.connect("cancel", self.on_cancel_clicked)
-        self.connect("close", self.on_close_clicked)
-        self.connect("apply", self.on_apply_clicked)
-
-        screen = Gdk.Screen.get_default()
-        provider = Gtk.CssProvider()
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        provider.load_from_path('style.css')
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.set_homogeneous(False)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.INTRO)
-        self.set_page_title(box, "  환영  ")
-        label_0 = Gtk.Label(label="<span color='#0a171f' font-weight='bold' size='16000'>Linux용 Autodesk Fusion 360 설치 프로그램에 오신 것을 환영합니다</span>\n\n"
-                                 "이 설정 마법사는 컴퓨터에 Autodesk Fusion 360을 설치하는 데 도움이 됩니다.\n\n"
-                                 "- 이 설치를 계속하기 전에 다른 모든 애플리케이션을 닫는 것이 좋습니다.\n\n"
-                                 "- 또한 필요한 모든 패키지를 얻으려면 활성 인터넷 연결이 필요합니다.\n\n"
-                                 "계속하려면 <span font-weight='semi-bold'>'다음'</span>을 클릭하세요. 설치 설정을 검토하거나 변경해야 하는 경우 <span font-weight='semi-bold'>를 클릭하세요. '이전'</span>.\n\n"
-                                 "설치를 취소하고 마법사를 종료하려면 <span font-weight='semi-bold'>'취소'</span>를 클릭하세요.")
-        label_0.set_use_markup (True)
-        label_0.set_line_wrap(True)
-        label_0.set_name('text')
-        box.pack_start(label_0, False, False, 0)
-
-        currencies = [
-            "English",
-            "Czech",
-            "German",
-            "Spanish",
-            "French",
-            "Italian",
-            "Japanese",
-            "Korean",
-            "Chinese",
-        ]
-        currency_combo = Gtk.ComboBoxText()
-        currency_combo.set_entry_text_column(0)
-        currency_combo.set_name('padding-left-bottom')
-        currency_combo.connect("changed", self.on_currency_combo_changed)
-        
-        for currency in currencies:
-            currency_combo.append_text(currency)
-
-        currency_combo.set_active(7)
-        box.pack_end(currency_combo, False, False, 0)
-
-
-
-
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.license = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.license)
-        self.set_page_type(self.license, Gtk.AssistantPageType.CONTENT)
-        self.set_page_title(self.license, "  라이센스 계약  ")
-        
-        open_license_text = open("../locale/ko-KR/license-ko.txt", "r")
-        data_license_text = open_license_text.read()
-
-        scrolledwindow = Gtk.ScrolledWindow()
-        scrolledwindow.set_min_content_height(400)
-        self.license.pack_start(scrolledwindow, False, False, 0)
-      
-        label_1 = Gtk.Label(label=str(data_license_text))
-        label_1.set_use_markup (True)
-        label_1.set_line_wrap(True)
-        label_1.set_name('text') # assign CSS settings
-
-        scrolledwindow.add(label_1)
-        self.license.pack_start(label_1, False, False, 0) 
-
-        checkbutton = Gtk.CheckButton(label="이용약관을 읽었으며 이에 동의합니다.")
-        checkbutton.set_name('text') # assign CSS settings
-        checkbutton.connect("toggled", self.on_license_toggled)
-        self.license.pack_start(checkbutton, False, False, 20)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.complete = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.complete)
-        self.set_page_type(self.complete, Gtk.AssistantPageType.PROGRESS)
-        self.set_page_title(self.complete, "  맞춤화  ")
-        label = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        self.complete.pack_start(label, False, False, 0)        
-
-        label1 = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label1.set_line_wrap(True)
-        label1.set_name('small') # assign CSS settings
-        self.complete.pack_start(label1, False, False, 0)
-
-        checkbutton = Gtk.CheckButton(label="Mark page as complete")
-        checkbutton.connect("toggled", self.on_complete_toggled)
-        self.complete.pack_start(checkbutton, False, False, 0)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.CONFIRM)
-        self.set_page_title(box, "  설치  ")
-        label = Gtk.Label(label="The 'Confirm' page may be set as the final page in the Assistant, however this depends on what the Assistant does. This page provides an 'Apply' button to explicitly set the changes, or a 'Go Back' button to correct any mistakes.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.SUMMARY)
-        self.set_page_title(box, "  요약  ")
-        label = Gtk.Label(label="A 'Summary' should be set as the final page of the Assistant if used however this depends on the purpose of your Assistant. It provides information on the changes that have been made during the configuration or details of what the user should do next. On this page only a Close button is displayed. Once at the Summary page, the user cannot return to any other page.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-    def on_apply_clicked(self, *args):
-        print("The 'Apply' button has been clicked")
-
-    def on_close_clicked(self, *args):
-        print("The 'Close' button has been clicked")
-        Gtk.main_quit()
-
-    def on_cancel_clicked(self, *args):
-        print("The Assistant has been cancelled.")
-        Gtk.main_quit()
-
-    def on_currency_combo_changed(self, combo):  
-        text = combo.get_active_text()
-        if text == "Czech":
-            print("CZ")  
-            win1.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win2.show_all()
-        elif text == "English":
-            print("EN")  
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win1.show_all()
-        elif text == "German":
-            print("DE")  
-            win1.hide()
-            win2.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win3.show_all()
-        elif text == "Spanish":
-            print("SP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win4.show_all()
-        elif text == "French":
-            print("FR")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win5.show_all()
-        elif text == "Italian":
-            print("IT")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win6.show_all()
-        elif text == "Japanese":
-            print("JP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win8.hide()
-            win9.hide()
-            win7.show_all()
-        elif text == "Korean":
-            print("KO")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win9.hide()
-            win8.show_all()
-        elif text == "Chinese":
-            print("CN")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.show_all()
-        else :
-            print("ERROR")
-
-    def on_complete_toggled(self, checkbutton):
-        win8.set_page_complete(self.complete, checkbutton.get_active())
-
-    def on_license_toggled(self, checkbutton):
-        win8.set_page_complete(self.license, checkbutton.get_active())
-
-
-#######################
-# win9 = Assistant_CN #
-##############################################################################################################################################################################
-
-class Assistant_CN(Gtk.Assistant):
-    def __init__(self):
-        Gtk.Assistant.__init__(self)
-        self.set_title("Autodesk Fusion 360 for Linux - Setup Assistant")
-        self.set_default_size(550, -1)
-        self.set_position(Gtk.WindowPosition.CENTER)
-        self.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("#ff6a01"))
-        self.connect("cancel", self.on_cancel_clicked)
-        self.connect("close", self.on_close_clicked)
-        self.connect("apply", self.on_apply_clicked)
-
-        screen = Gdk.Screen.get_default()
-        provider = Gtk.CssProvider()
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        provider.load_from_path('style.css')
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.set_homogeneous(False)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.INTRO)
-        self.set_page_title(box, "  歡迎  ")
-        label_0 = Gtk.Label(label="<span color='#0a171f' font-weight='bold' size='16000'>歡迎使用適用於 Linux 的 Autodesk Fusion 360 安裝程式</span>\n\n"
-                                 "此安裝精靈將協助您在電腦上安裝 Autodesk Fusion 360。\n\n"
-                                 "- 強烈建議您在繼續此安裝之前關閉所有其他應用程式。\n\n"
-                                 "- 此外，需要有效的網路連線才能取得所有必需的軟體包。\n\n"
-                                 "點擊 <span font-weight='semi-bold'>'下一步'</span>繼續。如果您需要檢查或更改任何安裝設置，請點擊 <span font-weight='semi-bold'>'上一個'</span>。\n\n"
-                                 "點選 <span font-weight='semi-bold'>'取消'</span>取消安裝並退出精靈。")
-        label_0.set_use_markup (True)
-        label_0.set_line_wrap(True)
-        label_0.set_name('text')
-        box.pack_start(label_0, False, False, 0)
-
-        currencies = [
-            "English",
-            "Czech",
-            "German",
-            "Spanish",
-            "French",
-            "Italian",
-            "Japanese",
-            "Korean",
-            "Chinese",
-        ]
-        currency_combo = Gtk.ComboBoxText()
-        currency_combo.set_entry_text_column(0)
-        currency_combo.set_name('padding-left-bottom')
-        currency_combo.connect("changed", self.on_currency_combo_changed)
-        
-        for currency in currencies:
-            currency_combo.append_text(currency)
-
-        currency_combo.set_active(8)
-        box.pack_end(currency_combo, False, False, 0)
-
-
-
-
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.license = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.license)
-        self.set_page_type(self.license, Gtk.AssistantPageType.CONTENT)
-        self.set_page_title(self.license, "  授權協議  ")
-        
-        open_license_text = open("../locale/zh-CN/license-zh.txt", "r")
-        data_license_text = open_license_text.read()
-
-        scrolledwindow = Gtk.ScrolledWindow()
-        scrolledwindow.set_min_content_height(400)
-        self.license.pack_start(scrolledwindow, False, False, 0)
-      
-        label_1 = Gtk.Label(label=str(data_license_text))
-        label_1.set_use_markup (True)
-        label_1.set_line_wrap(True)
-        label_1.set_name('text') # assign CSS settings
-
-        scrolledwindow.add(label_1)
-        self.license.pack_start(label_1, False, False, 0) 
-
-        checkbutton = Gtk.CheckButton(label="我已閱讀條款和條件並接受它們。")
-        checkbutton.set_name('text') # assign CSS settings
-        checkbutton.connect("toggled", self.on_license_toggled)
-        self.license.pack_start(checkbutton, False, False, 20)
-
-        # -------------------------------------------------------------------------------------------------
-
-        self.complete = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(self.complete)
-        self.set_page_type(self.complete, Gtk.AssistantPageType.PROGRESS)
-        self.set_page_title(self.complete, "  客製化  ")
-        label = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        self.complete.pack_start(label, False, False, 0)        
-
-        label1 = Gtk.Label(label="A 'Progress' page is used to prevent changing pages within the Assistant before a long-running process has completed. The 'Continue' button will be marked as insensitive until the process has finished. Once finished, the button will become sensitive.")
-        label1.set_line_wrap(True)
-        label1.set_name('small') # assign CSS settings
-        self.complete.pack_start(label1, False, False, 0)
-
-        checkbutton = Gtk.CheckButton(label="Mark page as complete")
-        checkbutton.connect("toggled", self.on_complete_toggled)
-        self.complete.pack_start(checkbutton, False, False, 0)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.CONFIRM)
-        self.set_page_title(box, "  安裝  ")
-        label = Gtk.Label(label="The 'Confirm' page may be set as the final page in the Assistant, however this depends on what the Assistant does. This page provides an 'Apply' button to explicitly set the changes, or a 'Go Back' button to correct any mistakes.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-        # -------------------------------------------------------------------------------------------------
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.append_page(box)
-        self.set_page_type(box, Gtk.AssistantPageType.SUMMARY)
-        self.set_page_title(box, "  概括  ")
-        label = Gtk.Label(label="A 'Summary' should be set as the final page of the Assistant if used however this depends on the purpose of your Assistant. It provides information on the changes that have been made during the configuration or details of what the user should do next. On this page only a Close button is displayed. Once at the Summary page, the user cannot return to any other page.")
-        label.set_line_wrap(True)
-        label.set_name('small') # assign CSS settings
-        box.pack_start(label, False, False, 0)
-        self.set_page_complete(box, True)
-
-    def on_apply_clicked(self, *args):
-        print("The 'Apply' button has been clicked")
-
-    def on_close_clicked(self, *args):
-        print("The 'Close' button has been clicked")
-        Gtk.main_quit()
-
-    def on_cancel_clicked(self, *args):
-        print("The Assistant has been cancelled.")
-        Gtk.main_quit()
-
-    def on_currency_combo_changed(self, combo):  
-        text = combo.get_active_text()
-        if text == "Czech":
-            print("CZ")  
-            win1.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win2.show_all()
-        elif text == "English":
-            print("EN")  
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win1.show_all()
-        elif text == "German":
-            print("DE")  
-            win1.hide()
-            win2.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win3.show_all()
-        elif text == "Spanish":
-            print("SP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win4.show_all()
-        elif text == "French":
-            print("FR")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win5.show_all()
-        elif text == "Italian":
-            print("IT")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win7.hide()
-            win8.hide()
-            win9.hide()
-            win6.show_all()
-        elif text == "Japanese":
-            print("JP")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win8.hide()
-            win9.hide()
-            win7.show_all()
-        elif text == "Korean":
-            print("KO")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win9.hide()
-            win8.show_all()
-        elif text == "Chinese":
-            print("CN")  
-            win1.hide()
-            win2.hide()
-            win3.hide()
-            win4.hide()
-            win5.hide()
-            win6.hide()
-            win7.hide()
-            win8.hide()
-            win9.show_all()
-        else :
-            print("ERROR")
-
-    def on_complete_toggled(self, checkbutton):
-        win9.set_page_complete(self.complete, checkbutton.get_active())
-
-    def on_license_toggled(self, checkbutton):
-        win9.set_page_complete(self.license, checkbutton.get_active())
+function SP_CHECK_REQUIRED_PACKAGES {
+    SP_REQUIRED_COMMANDS=("dialog" "wget" "lsb-release" "coreutils" "glxinfo" "pkexec")
+    for cmd in "${SP_REQUIRED_COMMANDS[@]}"; do
+        echo "Testing presence of ${cmd} ..."
+        local path="$(command -v "${cmd}")"
+        if [ -n "${path}" ]; then
+            echo -e "${GREEN}All required packages for the installer are installed!${NOCOLOR}"
+            SP_DOWNLOAD_LOCALE_INDEX
+            SP_CONFIG_LOCALE
+            SP_WELCOME
+        else
+            clear
+            echo -e "${RED}The required packages not installed or founded on your system!${NOCOLOR}"
+            read -p "${YELLOW}Would you like to install these packages on your system to continue the installation of Autodesk Fusion 360? (y/n)${NOCOLOR}" yn
+            case $yn in 
+	            y ) SP_INSTALL_REQUIRED_PACKAGES;
+	                SP_REQUIRED_COMMANDS;;
+	            n ) echo -e "${RED}The installer has been terminated!${NOCOLOR}";
+		            exit;;
+	            * ) echo -e "${RED}The installer was terminated for inexplicable reasons!${NOCOLOR}";
+		            exit 1;;
+            esac
+        fi
+    done;
+}
 
 ##############################################################################################################################################################################
+# INSTALLATION OF THE REQUIRED PACKAGES FOR THE INSTALLER:                                                                                                                   #
 ##############################################################################################################################################################################
+
+function SP_INSTALL_REQUIRED_PACKAGES {    
+    DISTRO_VERSION=$(lsb_release -ds) # Check which Linux Distro is used!
+        if [[ $DISTRO_VERSION == *"Arch"*"Linux"* ]] || [[ $DISTRO_VERSION == *"Manjaro"*"Linux"* ]]; then
+            echo -e "${YELLOW}All required packages for the installer will be installed!${NOCOLOR}"
+            sudo pacman -S dialog wget lsb-release coreutils mesa-demos polkit
+            echo -e "${GREEN}All required packages for the installer are installed!${NOCOLOR}"
+        elif [[ $DISTRO_VERSION == *"Debian"*"10"* ]] || [[ $DISTRO_VERSION == *"Debian"*"11"* ]] || [[ $DISTRO_VERSION == *"Debian"*"Sid"* ]] || [[ $DISTRO_VERSION == *"Ubuntu"*"18.04"* ]] \
+        || [[ $DISTRO_VERSION == *"Linux Mint"*"19"* ]] || [[ $DISTRO_VERSION == *"Ubuntu"*"20.04"* ]] || [[ $DISTRO_VERSION == *"Linux Mint"*"20"* ]] \
+        || [[ $DISTRO_VERSION == *"Ubuntu"*"22.04"* ]] || [[ $DISTRO_VERSION == *"Linux Mint"*"21"* ]]; then
+            echo -e "${YELLOW}All required packages for the installer will be installed!${NOCOLOR}"
+            sudo apt-get install -y dialog wget lsb-release coreutils mesa-utils policykit-1 
+            echo -e "${GREEN}All required packages for the installer are installed!${NOCOLOR}"
+        elif [[ $DISTRO_VERSION == *"Fedora"*"37"* ]] || [[ $DISTRO_VERSION == *"Fedora"*"38"* ]] || [[ $DISTRO_VERSION == *"Fedora"*"Rawhide"* ]]; then
+            echo -e "${YELLOW}All required packages for the installer will be installed!${NOCOLOR}"
+            sudo dnf install -y dialog wget lsb-release coreutils mesa-utils polkit
+            echo -e "${GREEN}All required packages for the installer are installed!${NOCOLOR}"
+        elif [[ $DISTRO_VERSION == *"Gentoo"*"Linux"* ]]; then
+            echo -e "${YELLOW}All required packages for the installer will be installed!${NOCOLOR}"
+            sudo emerge -q dev-util/dialog net-misc/wget sys-apps/lsb-release sys-apps/coreutils x11-apps/mesa-progs sys-auth/polkit
+            echo -e "${GREEN}All required packages for the installer are installed!${NOCOLOR}"
+        elif [[ $DISTRO_VERSION == *"nixos"* ]] || [[ $DISTRO_VERSION == *"NixOS"* ]]; then
+            echo -e "${YELLOW}All required packages for the installer will be installed!${NOCOLOR}"
+            sudo nix-env -iA nixos.dialog nixos.wget nixos.lsb_release nixos.coreutils nixos.mesa-utils nixos.polkit
+            echo -e "${GREEN}All required packages for the installer are installed!${NOCOLOR}"
+        elif [[ $DISTRO_VERSION == *"openSUSE"*"15.4"* ]] || [[ $DISTRO_VERSION == *"openSUSE"*"15.5"* ]] || [[ $DISTRO_VERSION == *"openSUSE"*"Tumbleweed"* ]]; then
+            echo -e "${YELLOW}All required packages for the installer will be installed!${NOCOLOR}"
+            sudo zypper install -y dialog wget lsb-release coreutils Mesa-demo-x polkit
+            echo -e "${GREEN}All required packages for the installer are installed!${NOCOLOR}"
+        elif [[ $DISTRO_VERSION == *"Red Hat Enterprise Linux"*"8"* ]] || [[ $DISTRO_VERSION == *"Red Hat Enterprise Linux"*"9"* ]]; then
+            echo -e "${YELLOW}All required packages for the installer will be installed!${NOCOLOR}"
+            sudo dnf install -y dialog wget lsb-release coreutils mesa-utils policykit-1
+            echo -e "${GREEN}All required packages for the installer are installed!${NOCOLOR}"
+        elif [[ $DISTRO_VERSION == *"Solus"*"Linux"* ]]; then
+            echo -e "${YELLOW}All required packages for the installer will be installed!${NOCOLOR}"
+            sudo eopkg -y install dialog wget lsb-release coreutils mesa-utils polkit
+            echo -e "${GREEN}All required packages for the installer are installed!${NOCOLOR}"
+        elif [[ $DISTRO_VERSION == *"Void"*"Linux"* ]]; then
+            echo -e "${YELLOW}All required packages for the installer will be installed!${NOCOLOR}"
+            sudo xbps-install -Sy dialog wget lsb-release coreutils mesa-demos polkit
+            echo -e "${GREEN}All required packages for the installer are installed!${NOCOLOR}"
+        else
+            echo -e "${YELLOW}The installer doesn't support your current Linux distribution ($DISTRO_VERSION) at this time!${NOCOLOR}"; 
+            echo -e "${RED}The installer has been terminated!${NOCOLOR}"
+            exit;
+        fi
+}
+
+##############################################################################################################################################################################
+# DOWNLOADING THE LANGUAGE PACKS FOR THE INSTALLER:                                                                                                                          #
 ##############################################################################################################################################################################
 
-win1 = Assistant_EN()
-win2 = Assistant_CZ()
-win3 = Assistant_DE()
-win4 = Assistant_ES()
-win5 = Assistant_FR()
-win6 = Assistant_IT()
-win7 = Assistant_JP()
-win8 = Assistant_KO()
-win9 = Assistant_CN()
+function SP_DOWNLOAD_LOCALE_INDEX {   
+    SP_DOWNLOADER_FILE_URL="https://github.com/cryinkfly/Autodesk-Fusion-360-for-Linux/raw/main/files/builds/stable-branch/locale/locale.sh"
+    SP_DOWNLOADER_SUBTITLE="Automatic initial language configuration"
+    SP_DOWNLOADER_TEXT="Downloading the language files ..."
+    SP_DOWNLOADER
+    chmod +x "$SP_PATH/locale/locale.sh"
+    sleep 1
+    source "$SP_PATH/locale/locale.sh" # shellcheck source=../locale/locale.sh
+    clear
+    SP_LOCALE=$(echo $LANG)
+}
 
-win1.connect("destroy", Gtk.main_quit)
-win2.connect("destroy", Gtk.main_quit)
-win3.connect("destroy", Gtk.main_quit)
-win4.connect("destroy", Gtk.main_quit)
-win5.connect("destroy", Gtk.main_quit)
-win6.connect("destroy", Gtk.main_quit)
-win7.connect("destroy", Gtk.main_quit)
-win8.connect("destroy", Gtk.main_quit)
-win9.connect("destroy", Gtk.main_quit)
+##############################################################################################################################################################################
+# CONFIGURATION OF THE LANGUAGE PACKS FOR THE INSTALLER:                                                                                                                     #
+##############################################################################################################################################################################
 
-win1.show_all()
-Gtk.main()
+function SP_CONFIG_LOCALE { 
+    if [[ $SP_LOCALE = "01" ]] || [[ $SP_LOCALE == *"zh"*"CN"* ]]; then
+        source "$SP_PATH/locale/zh-CN/locale-zh.sh" # shellcheck source=../locale/zh-CN/locale-zh.sh
+        SP_LICENSE_FILE="$SP_PATH/locale/zh-CN/license-zh.txt"
+    elif [[ $SP_LOCALE = "02" ]] || [[ $SP_LOCALE == *"cs"*"CZ"* ]]; then
+        source "$SP_PATH/locale/cs-CZ/locale-cs.sh" # shellcheck source=../locale/cs-CZ/locale-cs.sh
+        SP_LICENSE_FILE="$SP_PATH/locale/cs-CZ/license-cs.txt"
+    elif [[ $SP_LOCALE = "04" ]] || [[ $SP_LOCALE == *"fr"*"FR"* ]]; then
+        source "$SP_PATH/locale/fr-FR/locale-fr.sh" # shellcheck source=../locale/fr-FR/locale-fr.sh
+        SP_LICENSE_FILE="$SP_PATH/locale/fr-FR/license-fr.txt"
+    elif [[ $SP_LOCALE = "05" ]] || [[ $SP_LOCALE == *"de"*"DE"* ]]; then
+        source "$SP_PATH/locale/de-DE/locale-de.sh" # shellcheck source=../locale/de-DE/locale-de.sh
+        SP_LICENSE_FILE="$SP_PATH/locale/de-DE/license-de.txt"
+    elif [[ $SP_LOCALE = "06" ]] || [[ $SP_LOCALE == *"it"*"IT"* ]]; then
+        source "$SP_PATH/locale/it-IT/locale-it.sh" # shellcheck source=../locale/it-IT/locale-it.sh
+        SP_LICENSE_FILE="$SP_PATH/locale/it-IT/license-it.txt"
+    elif [[ $SP_LOCALE = "07" ]] || [[ $SP_LOCALE == *"ja"*"JP"* ]]; then
+        source "$SP_PATH/locale/ja-JP/locale-ja.sh" # shellcheck source=../locale/ja-JP/locale-ja.sh
+        SP_LICENSE_FILE="$SP_PATH/locale/ja-JP/license-ja.txt"
+    elif [[ $SP_LOCALE = "08" ]] || [[ $SP_LOCALE == *"ko"*"KR"* ]]; then
+        source "$SP_PATH/locale/ko-KR/locale-ko.sh" # shellcheck source=../locale/ko-KR/locale-ko.sh
+        SP_LICENSE_FILE="$SP_PATH/locale/ko-KR/license-ko.txt"
+    elif [[ $SP_LOCALE = "09" ]] || [[ $SP_LOCALE == *"es"*"ES"* ]]; then
+        source "$SP_PATH/locale/es-ES/locale-es.sh" # shellcheck source=../locale/es-ES/locale-es.sh
+        SP_LICENSE_FILE="$SP_PATH/locale/es-ES/license-es.txt"
+    else
+        source "$SP_PATH/locale/en-US/locale-en.sh" # shellcheck source=../locale/en-US/locale-en.sh
+        SP_LICENSE_FILE="$SP_PATH/locale/en-US/license-en.txt"
+    fi
+}
+
+##############################################################################################################################################################################
+# CHECKING THE MINIMUM RAM (RANDOM ACCESS MEMORY) REQUIREMENT:                                                                                                               #
+##############################################################################################################################################################################
+
+function SP_CHECK_RAM {
+    GET_RAM_KILOBYTES=$(grep MemTotal /proc/meminfo | awk '{print $2}') # Get total RAM space in kilobytes
+    CONVERT_RAM_GIGABYTES=$(echo "scale=2; $GET_RAM_KILOBYTES / 1024 / 1024" | bc) # Convert kilobytes to gigabytes
+    if (( $(echo "$CONVERT_RAM_GIGABYTES > 4" | bc -l) )); then # Check if RAM is greater than 4 GB
+        echo -e "${GREEN}The total RAM (Random Access Memory) is greater than 4 GByte ($CONVERT_RAM_GIGABYTES GByte) and Fusion 360 will run more stable later!${NOCOLOR}"
+    else
+        echo -e "${RED}The total RAM (Random Access Memory) is not greater than 4 GByte ($CONVERT_RAM_GIGABYTES GByte) and Fusion 360 may run unstable later with insufficient RAM memory!${NOCOLOR}"
+        read -p "${YELLOW}Are you sure you want to continue with the installation? (y/n)${NOCOLOR}" yn
+            case $yn in 
+	            y ) ...;;
+	            n ) echo -e "${RED}The installer has been terminated!${NOCOLOR}";
+		             exit;;
+	            * ) echo -e "${RED}The installer was terminated for inexplicable reasons!${NOCOLOR}";
+		            exit 1;;
+            esac
+    fi
+}
+
+##############################################################################################################################################################################
+# CHECKING THE MINIMUM VRAM (VIDEO RAM) REQUIREMENT:                                                                                                                         #
+##############################################################################################################################################################################
+
+function SP_CHECK_VRAM {
+    # Get the total memory of the graphics card
+    GET_VRAM_MEGABYTES=$(dmesg | grep -o -P -i "(?<=vram:).*(?=M 0x)")
+    # Check if the total memory is greater than 1 GByte
+    if [ "$GET_VRAM_MEGABYTES" -gt 1024 ]; then
+        echo -e "${GREEN}The total VRAM (Video RAM) is greater than 1 GByte ($CONVERT_RAM_GIGABYTES GByte) and Fusion 360 will run more stable later!${NOCOLOR}"
+    else
+        echo -e "${RED}The total VRAM (Video RAM) is not greater than 1 GByte ($CONVERT_RAM_GIGABYTES GByte) and Fusion 360 may run unstable later with insufficient RAM memory!${NOCOLOR}"
+        read -p "${YELLOW}Are you sure you want to continue with the installation? (y/n)${NOCOLOR}" yn
+            case $yn in 
+	            y ) ...;;
+	            n ) echo -e "${RED}The installer has been terminated!${NOCOLOR}";
+		            exit;;
+	            * ) echo -e "${RED}The installer was terminated for inexplicable reasons!${NOCOLOR}";
+		            exit 1;;
+            esac
+    fi
+}
+
+##############################################################################################################################################################################
+# CHECKING THE MINIMUM DISK SPACE (DEFAULT: HOME-PARTITION) REQUIREMENT:                                                                                                     #
+##############################################################################################################################################################################
+
+function SP_CHECK_DISK_SPACE {
+    # Get the free disk memory size in GB
+    GET_DISK_SPACE=$(df -h /home | awk '{print $4}' | tail -1)
+    echo -e "${GREEN}The free disk memory size is: $GET_DISK_SPACE${NOCOLOR}"
+    if [[ $GET_DISK_SPACE > 10G ]]; then # Check if the home size is greater than 10GB
+        echo -e "${GREEN}The free disk memory size is greater than 10GB.${NOCOLOR}"
+    else
+        echo -e "${YELLOW}There is not enough disk free memory to continue installing Fusion 360 on your system!${NOCOLOR}"
+        echo -e "${YELLOW}Make more space in your home partition or select a different hard drive.${NOCOLOR}"
+        echo -e "${RED}The installer has been terminated!${NOCOLOR}"
+        exit;
+    fi
+}
+
+##############################################################################################################################################################################
+# CHECK THE GRAPHICS CARD DRIVER:                                                                                                                                            #
+##############################################################################################################################################################################
+
+###############################################################################################################################################################
+# With the command: "glxinfo | grep -A 10 -B 1 Vendor"                                                                                                        #
+# It automatically detects which graphics card (if AMD, INTEL or NVIDIA) is currently being used for image output and calculation of the applications.        #
+# This means that if two graphics cards are installed, it will be checked which one is connected to display or is primarily used!                             #
+###############################################################################################################################################################
+
+function SP_CHECK_GPU_DRIVER {
+    if [[ $(glxinfo | grep -A 10 -B 1 Vendor) == *"AMD"* ]]; then
+        GPU_DRIVER="amd"
+        SP_INSTALL_GPU_DRIVER
+    elif [[ $(glxinfo | grep -A 10 -B 1 Vendor) == *"Intel"* ]]; then
+        GPU_DRIVER="intel"
+        SP_INSTALL_GPU_DRIVER
+    elif [[ $(glxinfo | grep -A 10 -B 1 Vendor) == *"NVIDIA"* ]]; then
+        GPU_DRIVER="nvidia"
+        SP_INSTALL_GPU_DRIVER
+    else
+        echo -e "${YELLOW}The graphics card analysis failed because your graphics card was not detected!${NOCOLOR}"
+        echo -e "${RED}The installer has been terminated!${NOCOLOR}"
+        exit;
+    fi
+    SP_INSTALL_GPU_DRIVER
+}
+
+##############################################################################################################################################################################
+# INSTALLATION OF THE GRAPHICS CARD DRIVER:                                                                                                                                  #
+##############################################################################################################################################################################
+
+function SP_INSTALL_GPU_DRIVER {    
+    DISTRO_VERSION=$(lsb_release -ds) # Check which Linux Distro is used!
+        if [[ $DISTRO_VERSION == *"Arch"*"Linux"* ]] || [[ $DISTRO_VERSION == *"Manjaro"*"Linux"* ]]; then
+            if grep -q '^\[multilib\]$' /etc/pacman.conf ; then
+                echo -e "${GREEN}The multilib repository exists on your computer.${NOCOLOR}"
+            else
+                echo -e "${YELLOW}The multilib repository will be enable in the [multilib] section in /etc/pacman.conf!${NOCOLOR}"
+                echo "[multilib]" | sudo tee -a /etc/pacman.conf
+                echo "Include = /etc/pacman.d/mirrorlist" | sudo tee -a /etc/pacman.conf
+            fi
+            if [[ $GPU_DRIVER == *"amd"* ]]; then
+                if [[ $(pacman -Qe) == *"mesa"*"lib32-mesa"*"mesa-vdpau"*"lib32-mesa-vdpau"*"lib32-vulkan-radeon"*"vulkan-radeon"*"glu"*"lib32-glu"*"vulkan-icd-loader"*"lib32-vulkan-icd-loader"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    sudo pacman -Syu && sudo pacman -Syy
+                    sudo pacman -S --needed mesa lib32-mesa mesa-vdpau lib32-mesa-vdpau lib32-vulkan-radeon vulkan-radeon glu lib32-glu vulkan-icd-loader lib32-vulkan-icd-loader
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                fi
+            elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                if [[ $(pacman -Qe) == *"lib32-mesa"*"vulkan-inte"*"lib32-vulkan-intel"*"vulkan-icd-loader"*"lib32-vulkan-icd-loader"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    sudo pacman -Syu && sudo pacman -Syy
+                    sudo pacman -S --needed lib32-mesa vulkan-intel lib32-vulkan-intel vulkan-icd-loader lib32-vulkan-icd-loader
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                fi
+            else
+                if [[ $(pacman -Qe) == *"nvidia-dkms"*"nvidia-utils"*"lib32-nvidia-utils"*"nvidia-settings"*"vulkan-icd-loader"*"lib32-vulkan-icd-loader"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    sudo pacman -Syu && sudo pacman -Syy
+                    sudo pacman -S --needed nvidia-dkms nvidia-utils lib32-nvidia-utils nvidia-settings vulkan-icd-loader lib32-vulkan-icd-loader
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+            fi
+        elif [[ $DISTRO_VERSION == *"Debian"* ]] || [[ $DISTRO_VERSION == *"Ubuntu"* ]] || [[ $DISTRO_VERSION == *"Linux Mint"* ]]; then
+            if [[ $GPU_DRIVER == *"amd"* ]]; then
+                if [[ $(apt list --installed) == *"software-properties-common"*"firmware-linux"*"firmware-linux-nonfree"*"libdrm-amdgpu1"*"xserver-xorg-video-amdgpu"*"mesa-vulkan-drivers"*"libvulkan1"*"vulkan-tools"*"vulkan-utils"*"vulkan-validationlayers"*"mesa-opencl-icd"*]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    if [[ $DISTRO_VERSION == *"Debian"* ]]; then
+                        if [[ $(grep ^[^#] /etc/apt/sources.list /etc/apt/sources.list.d/*) == *"contrib"* ]] && [[ $(grep ^[^#] /etc/apt/sources.list /etc/apt/sources.list.d/*) == *"non-free"* ]]; then
+                            sudo apt-get update && sudo apt-get install -y software-properties-common
+                            sudo apt-add-repository contrib && sudo apt-add-repository non-free # The package "software-properties-common" must be installed before!
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-install -y firmware-linux firmware-linux-nonfree libdrm-amdgpu1 xserver-xorg-video-amdgpu mesa-vulkan-drivers libvulkan1 vulkan-tools vulkan-utils vulkan-validationlayers mesa-opencl-icd
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        else
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-install -y software-properties-common firmware-linux firmware-linux-nonfree libdrm-amdgpu1 xserver-xorg-video-amdgpu mesa-vulkan-drivers libvulkan1 vulkan-tools vulkan-utils vulkan-validationlayers mesa-opencl-icd
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    else
+                        if [[ $(sudo grep -rhE ^deb /etc/apt/sources.list*) == *"https://ppa.launchpadcontent.net/oibaf/graphics-drivers/ubuntu"* ]]; then
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-install -y firmware-linux firmware-linux-nonfree libdrm-amdgpu1 xserver-xorg-video-amdgpu mesa-vulkan-drivers libvulkan1 vulkan-tools vulkan-utils vulkan-validationlayers mesa-opencl-icd
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        else
+                            sudo add-apt-repository ppa:oibaf/graphics-drivers
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-install -y firmware-linux firmware-linux-nonfree libdrm-amdgpu1 xserver-xorg-video-amdgpu mesa-vulkan-drivers libvulkan1 vulkan-tools vulkan-utils vulkan-validationlayers mesa-opencl-icd
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        fi
+                    fi
+                fi
+            elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                if [[ $(apt list --installed) == *"mesa-utils"*"libegl1-mesa"*"mesa-vulkan-drivers"*"mesa-vulkan-drivers"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    if [[ $DISTRO_VERSION == *"Debian"* ]]; then
+                        if [[ $(grep ^[^#] /etc/apt/sources.list /etc/apt/sources.list.d/*) == *"contrib"* ]] && [[ $(grep ^[^#] /etc/apt/sources.list /etc/apt/sources.list.d/*) == *"non-free"* ]]; then
+                            sudo apt-get update && sudo apt-get install -y software-properties-common
+                            sudo apt-add-repository contrib && sudo apt-add-repository non-free # The package "software-properties-common" must be installed before!
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-install -y mesa-utils libgl1-mesa mesa-vulkan-drivers
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        else
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-install -y software-properties-common mesa-utils libgl1-mesa mesa-vulkan-drivers
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    else
+                        if [[$(sudo grep -rhE ^deb /etc/apt/sources.list*) == *"https://ppa.launchpadcontent.net/graphics-drivers/ppa/ubuntu"* ]]; then
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-install -y mesa-utils libgl1-mesa mesa-vulkan-drivers
+                            echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                        else
+                            sudo add-apt-repository ppa:graphics-drivers/ppa
+                            sudo apt-install -y mesa-utils libgl1-mesa mesa-vulkan-drivers
+                            echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                        fi
+                    fi
+                fi
+            else
+                if [[ $(apt list --installed) == *"nvidia-driver"*"vulkan-utils"*"libvulkan1"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    if [[ $DISTRO_VERSION == *"Debian"* ]]; then
+                        if [[ $(grep ^[^#] /etc/apt/sources.list /etc/apt/sources.list.d/*) == *"contrib"* ]] && [[ $(grep ^[^#] /etc/apt/sources.list /etc/apt/sources.list.d/*) == *"non-free"* ]]; then
+                            sudo apt-get update && sudo apt-get install -y software-properties-common
+                            sudo apt-add-repository contrib && sudo apt-add-repository non-free # The package "software-properties-common" must be installed before!
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-install -y nvidia-driver vulkan-utils libvulkan1
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        else
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-install -y software-properties-common nvidia-driver vulkan-utils libvulkan1
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    else
+                        if [[$(sudo grep -rhE ^deb /etc/apt/sources.list*) == *"https://ppa.launchpadcontent.net/graphics-drivers/ppa/ubuntu"* ]]; then
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-get install -y nvidia-driver vulkan-utils libvulkan1
+                            echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                        else
+                            sudo apt-get purge nvidia*
+                            sudo add-apt-repository ppa:graphics-drivers/ppa
+                            sudo apt-get update && sudo ubuntu-drivers autoinstall
+                            sudo apt-get install -y nvidia-driver vulkan-utils libvulkan1
+                            echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                        fi
+                    fi
+                fi
+            fi
+        elif [[ $DISTRO_VERSION == *"Fedora"* ]]; then
+            if [[ $GPU_DRIVER == *"amd"* ]]; then
+                echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+            elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+            else
+                if [[ $(sudo dnf list installed) == *"akmod-nvidia"*"xorg-x11-drv-nvidia-cuda"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    if [[ $(sudo dnf repolist all) == *"rpmfusion-free-release"* ]] && [[ $(sudo dnf repolist all) == *"rpmfusion-nonfree-release"* ]]; then
+                        sudo dnf install -y akmod-nvidia xorg-x11-drv-nvidia-cuda
+                        echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    else
+                        sudo dnf install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm 
+                        sudo dnf install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+                        sudo dnf install -y akmod-nvidia xorg-x11-drv-nvidia-cuda
+                        echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+            fi
+        elif [[ $DISTRO_VERSION == *"Gentoo"*"Linux"* ]]; then
+            if [[ $GPU_DRIVER == *"amd"* ]]; then
+                if [[ $(equery list '*') == *"x11-drivers/xf86-video-amdgpu"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    sudo emerge --ask --quiet x11-drivers/xf86-video-amdgpu
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                fi
+            elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                if [[ $(equery list '*') == *"x11-drivers/xf86-video-intel"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    sudo emerge --ask --quiet x11-drivers/xf86-video-intel
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                fi
+            else
+                if [[ $(equery list '*') == *"x11-drivers/nvidia-drivers"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    sudo emerge --ask --quiet x11-drivers/nvidia-drivers
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                fi
+            fi
+        elif [[ $DISTRO_VERSION == *"nixos"* ]] || [[ $DISTRO_VERSION == *"NixOS"* ]]; then
+            if [[ $GPU_DRIVER == *"amd"* ]]; then
+                if [[ $(nix-env -qa --installed "*") == *"nixos.amdgpu"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    sudo nix-env -iA nixos.amdgpu
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                fi
+            elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                if [[ $(nix-env -qa --installed "*") == *"nixos.intel-video-acc"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    sudo nix-env -iA nixos.intel-video-acc
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                fi
+            else
+                if [[ $(nix-env -qa --installed "*") == *"nixos.nvidia"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                    sudo nix-env -iA nixos.nvidia
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                fi
+            fi
+        elif [[ $DISTRO_VERSION == *"openSUSE"* ]]; then
+            if [[ $DISTRO_VERSION == *"openSUSE"*"15.4"* ]]; then
+                if [[ $GPU_DRIVER == *"amd"* ]]; then
+                    if [[ $(zypper search --installed-only) == *"kernel-firmware-amdgpu"*"libdrm_amdgpu1"*"libdrm_amdgpu1-32bit"*"libdrm_radeon1"*"libdrm_radeon1-32bit"*"libvulkan_radeon"*"libvulkan_radeon-32bit"*"libvulkan1"*"libvulkan1-32bit"* ]]; then
+                        echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                    else
+                        echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                        sudo zypper in -y kernel-firmware-amdgpu libdrm_amdgpu1 libdrm_amdgpu1-32bit libdrm_radeon1 libdrm_radeon1-32bit libvulkan_radeon libvulkan_radeon-32bit libvulkan1 libvulkan1-32bit
+                        echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    fi
+                elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                    if [[ $(zypper search --installed-only) == *"kernel-firmware-intel"*"libdrm_intel1"*"libdrm_intel1-32bit"*"libvulkan1"*"libvulkan1-32bit"*"libvulkan_intel"*"libvulkan_intel-32bit"* ]]; then
+                        echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                    else
+                        echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                        sudo zypper in -y kernel-firmware-intel libdrm_intel1 libdrm_intel1-32bit libvulkan1 libvulkan1-32bit libvulkan_intel libvulkan_intel-32bit
+                        echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    fi
+                else
+                    if [[ $(zypper search --installed-only) == *"x11-video-nvidiaG05"*"libvulkan1"*"libvulkan1-32bit"* ]]; then
+                        echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                    else
+                        if [[ $(zypper lr -u) == *"https://download.nvidia.com/opensuse/leap/15.4/"*]] || [[ $(zypper lr -u) == *"https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo"*]]; then
+                            sudo zypper in -y x11-video-nvidiaG05 libvulkan1 libvulkan1-32bit
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        else
+                            sudo zypper addrepo --refresh 'https://download.nvidia.com/opensuse/leap/$releasever' NVIDIA
+                            sudo zypper in -y x11-video-nvidiaG05 libvulkan1 libvulkan1-32bit
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        fi
+                    fi
+                fi
+            elif [[ $DISTRO_VERSION == *"openSUSE"*"15.5"* ]]; then
+                if [[ $GPU_DRIVER == *"amd"* ]]; then
+                    if [[ $(zypper search --installed-only) == *"kernel-firmware-amdgpu"*"libdrm_amdgpu1"*"libdrm_amdgpu1-32bit"*"libdrm_radeon1"*"libdrm_radeon1-32bit"*"libvulkan_radeon"*"libvulkan_radeon-32bit"*"libvulkan1"*"libvulkan1-32bit"* ]]; then
+                        echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                    else
+                        echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                        sudo zypper in -y kernel-firmware-amdgpu libdrm_amdgpu1 libdrm_amdgpu1-32bit libdrm_radeon1 libdrm_radeon1-32bit libvulkan_radeon libvulkan_radeon-32bit libvulkan1 libvulkan1-32bit
+                        echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    fi
+                elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                    if [[ $(zypper search --installed-only) == *"kernel-firmware-intel"*"libdrm_intel1"*"libdrm_intel1-32bit"*"libvulkan1"*"libvulkan1-32bit"*"libvulkan_intel"*"libvulkan_intel-32bit"* ]]; then
+                        echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                    else
+                        echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                        sudo zypper in -y kernel-firmware-intel libdrm_intel1 libdrm_intel1-32bit libvulkan1 libvulkan1-32bit libvulkan_intel libvulkan_intel-32bit
+                        echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    fi
+                else
+                    if [[ $(zypper search --installed-only) == *"x11-video-nvidiaG05"*"libvulkan1"*"libvulkan1-32bit"* ]]; then
+                        echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                    else
+                        if [[ $(zypper lr -u) == *"https://download.nvidia.com/opensuse/leap/15.5/"*]] || [[ $(zypper lr -u) == *"https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo"*]]; then
+                            sudo zypper in -y x11-video-nvidiaG05 libvulkan1 libvulkan1-32bit
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        else
+                            sudo zypper addrepo --refresh 'https://download.nvidia.com/opensuse/leap/$releasever' NVIDIA
+                            sudo zypper in -y x11-video-nvidiaG05 libvulkan1 libvulkan1-32bit
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        fi
+                    fi
+                fi
+            elif [[ $DISTRO_VERSION == *"openSUSE"*"Tumbleweed"* ]]; then
+                if [[ $GPU_DRIVER == *"amd"* ]]; then
+                    if [[ $(zypper search --installed-only) == *"kernel-firmware-amdgpu"*"libdrm_amdgpu1"*"libdrm_amdgpu1-32bit"*"libdrm_radeon1"*"libdrm_radeon1-32bit"*"libvulkan_radeon"*"libvulkan_radeon-32bit"*"libvulkan1"*"libvulkan1-32bit"* ]]; then
+                        echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                    else
+                        echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                        sudo zypper in -y kernel-firmware-amdgpu libdrm_amdgpu1 libdrm_amdgpu1-32bit libdrm_radeon1 libdrm_radeon1-32bit libvulkan_radeon libvulkan_radeon-32bit libvulkan1 libvulkan1-32bit
+                        echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    fi
+                elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                    if [[ $(zypper search --installed-only) == *"kernel-firmware-intel"*"libdrm_intel1"*"libdrm_intel1-32bit"*"libvulkan1"*"libvulkan1-32bit"*"libvulkan_intel"*"libvulkan_intel-32bit"* ]]; then
+                        echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                    else
+                        echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                        sudo zypper in -y kernel-firmware-intel libdrm_intel1 libdrm_intel1-32bit libvulkan1 libvulkan1-32bit libvulkan_intel libvulkan_intel-32bit
+                        echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    fi
+                else
+                    if [[ $(zypper search --installed-only) == *"x11-video-nvidiaG05"*"libvulkan1"*"libvulkan1-32bit"* ]]; then
+                        echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                    else
+                        if [[ $(zypper lr -u) == *"https://download.nvidia.com/opensuse/tumbleweed"*]]; then
+                            sudo zypper in -y x11-video-nvidiaG05 libvulkan1 libvulkan1-32bit
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        else
+                            sudo zypper addrepo --refresh https://download.nvidia.com/opensuse/tumbleweed NVIDIA
+                            sudo zypper in -y x11-video-nvidiaG05 libvulkan1 libvulkan1-32bit
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        fi
+                    fi
+                fi
+            fi
+        elif [[ $DISTRO_VERSION == *"Red Hat Enterprise Linux"* ]]; then
+            if [[ $DISTRO_VERSION == *"Red Hat Enterprise Linux"*"8"* ]]; then
+                if [[ $GPU_DRIVER == *"amd"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                else
+                    if [[ $(dnf list installed) == *"nvidia-driver:latest-dkms"*"cuda"* ]]; then
+                        echo -e "${GREEN}The latest graphics card driver is already installed.${NOCOLOR}"
+                    else
+                        echo -e "${YELLOW}The latest graphics card driver will be installed!${NOCOLOR}"
+                        if [[ $(dnf repolist) == *"https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo"*]]
+                            sudo dnf -y module install nvidia-driver:latest-dkms
+                            sudo dnf -y install cuda
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                        else
+                            sudo dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+                            sudo dnf clean all
+                            sudo dnf -y module install nvidia-driver:latest-dkms
+                            sudo dnf -y install cuda
+                            echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                    fi
+                fi
+            fi
+        elif [[ $DISTRO_VERSION == *"Solus"*"Linux"* ]]; then
+            if [[ $GPU_DRIVER == *"amd"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                else
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+        elif [[ $DISTRO_VERSION == *"Void"*"Linux"* ]]; then
+            if [[ $GPU_DRIVER == *"amd"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                elif [[ $GPU_DRIVER == *"intel"* ]]; then
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+                else
+                    echo -e "${GREEN}The latest graphics card driver is installed!${NOCOLOR}"
+        else
+            echo -e "${YELLOW}The graphics card driver installation has failed!${NOCOLOR}";
+            echo -e "${RED}The installer has been terminated!${NOCOLOR}"
+            exit;
+        fi
+}
+
+##############################################################################################################################################################################
+# INSTALLATION OF THE REQUIRED PACKAGES FOR WINE:                                                                                                                            #
+##############################################################################################################################################################################
+
+function SP_CHECK_INSTALL_WINE_VERSION {    
+    DISTRO_VERSION=$(lsb_release -ds) # Check which Linux Distro is used!
+        if [[ $DISTRO_VERSION == *"Arch"*"Linux"* ]] || [[ $DISTRO_VERSION == *"Manjaro"*"Linux"* ]]; then
+            if [[ $(pacman -Qe) == *"wine"*"wine-mono"*"wine_gecko"*"winetricks"*"p7zip"*"curl"*"cabextract"*"samba"*"ppp"* ]]; then
+                echo -e "${GREEN}The latest wine version is already installed.${NOCOLOR}"
+            else
+                echo -e "${YELLOW}The latest wine version will be installed!${NOCOLOR}"
+                sudo pacman -Syu && sudo pacman -Syy
+                sudo pacman -S --needed wine wine-mono wine_gecko winetricks p7zip curl cabextract samba ppp
+                echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+            fi
+        elif [[ $DISTRO_VERSION == *"Debian"* ]]; then
+            if [[ $(apt list --installed) == *"p7zip"*"p7zip-full"*"p7zip-rar"*"curl"*"winbind"*"cabextract"*"winehq-staging"* ]]; then
+                echo -e "${GREEN}The latest wine version is already installed.${NOCOLOR}"
+            else
+                echo -e "${YELLOW}The latest wine version will be installed!${NOCOLOR}"
+                sudo apt-get --allow-releaseinfo-change update # Some systems require this command for all repositories to work properly and for the packages to be downloaded for installation!
+                sudo dpkg --add-architecture i386 # Added i386 support for wine!
+                if [[ $DISTRO_VERSION == *"Debian"*"10"* ]]; then
+                    if [[ $(sudo grep -rhE ^deb /etc/apt/sources.list*) == *"https://dl.winehq.org/wine-builds/debian/"* ]]; then
+                        sudo apt-add-repository -r 'deb https://dl.winehq.org/wine-builds/debian/ buster main'
+                    else
+                        if [[ $(sudo grep -rhE ^deb /etc/apt/sources.list*) == *"https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_10/"* ]]; then
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-get install -y p7zip p7zip-full p7zip-rar curl winbind cabextract
+                            sudo apt-get install -y --install-recommends winehq-staging
+                            echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                        else
+                            wget -q https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_10//Release.key -O Release.key -O- | sudo apt-key add -
+                            sudo apt-add-repository 'deb https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_10/ ./'
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-get install -y p7zip p7zip-full p7zip-rar curl winbind cabextract
+                            sudo apt-get install -y --install-recommends winehq-staging
+                            echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                        fi
+                    fi
+                elif [[ $DISTRO_VERSION == *"Debian"*"11"* ]]; then
+                    if [[ $(sudo grep -rhE ^deb /etc/apt/sources.list*) == *"https://dl.winehq.org/wine-builds/debian/"* ]]; then
+                        sudo apt-add-repository -r 'deb https://dl.winehq.org/wine-builds/debian/ buster main'
+                    else
+                        if [[ $(sudo grep -rhE ^deb /etc/apt/sources.list*) == *"https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_11/"* ]]; then
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-get install -y p7zip p7zip-full p7zip-rar curl winbind cabextract
+                            sudo apt-get install -y --install-recommends winehq-staging
+                            echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                        else
+                            wget -q https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_11//Release.key -O Release.key -O- | sudo apt-key add -
+                            sudo apt-add-repository 'deb https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_11/ ./'
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-get install -y p7zip p7zip-full p7zip-rar curl winbind cabextract
+                            sudo apt-get install -y --install-recommends winehq-staging
+                            echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                        fi
+                    fi
+                elif [[ $DISTRO_VERSION == *"Debian"*"Sid"* ]]; then
+                    if [[ $(sudo grep -rhE ^deb /etc/apt/sources.list*) == *"https://dl.winehq.org/wine-builds/debian/"* ]]; then
+                        sudo apt-add-repository -r 'deb https://dl.winehq.org/wine-builds/debian/ buster main'
+                        if [[ $(sudo grep -rhE ^deb /etc/apt/sources.list*) == *"https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_Testing_standard/"* ]]; then
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-get install -y p7zip p7zip-full p7zip-rar curl winbind cabextract
+                            sudo apt-get install -y --install-recommends winehq-staging
+                            echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                        else
+                            wget -q https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_Testing_standard//Release.key -O Release.key -O- | sudo apt-key add -
+                            sudo apt-add-repository 'deb https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/Debian_Testing_standard/ ./'
+                            sudo apt-get update && sudo apt-get upgrade
+                            sudo apt-get install -y p7zip p7zip-full p7zip-rar curl winbind cabextract
+                            sudo apt-get install -y --install-recommends winehq-staging
+                            echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                        fi
+                    fi
+                else
+                    echo -e "${YELLOW}The installer doesn't support your current Linux distribution ($DISTRO_VERSION) at this time!${NOCOLOR}";
+                    echo -e "${RED}The installer has been terminated!${NOCOLOR}"
+                    exit; 
+            fi
+        elif [[ $DISTRO_VERSION == *"Fedora"* ]]; then
+            if [[ $(sudo dnf list installed) == *"p7zip"*"p7zip-plugins"*"curlcabextract"*"wine"* ]]; then
+                echo -e "${GREEN}The latest wine version is already installed.${NOCOLOR}"
+            else
+                echo -e "${YELLOW}The latest wine version will be installed!${NOCOLOR}"
+                if [[ $DISTRO_VERSION == *"Fedora"*"37"* ]]; then
+                    if [[ $(sudo dnf repolist all) == *"rpmfusion-free-release"*]] && [[ $(sudo dnf repolist all) == *"rpmfusion-nonfree-release"*]] && [[ $(sudo dnf repolist all) == *"wine"*]]; then
+                        sudo dnf update && sudo dnf upgrade
+                        sudo dnf install p7zip p7zip-plugins curl cabextract wine
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    else
+                        sudo dnf install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm 
+                        sudo dnf install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+                        sudo dnf config-manager --add-repo https://download.opensuse.org/repositories/Emulators:/Wine:/Fedora/Fedora_37/Emulators:Wine:Fedora.repo
+                        sudo dnf update && sudo dnf upgrade
+                        sudo dnf install p7zip p7zip-plugins curl wine cabextract
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    fi
+                elif [[ $DISTRO_VERSION == *"Fedora"*"38"* ]]; then
+                    if [[ $(sudo dnf repolist all) == *"rpmfusion-free-release"*]] && [[ $(sudo dnf repolist all) == *"rpmfusion-nonfree-release"*]] && [[ $(sudo dnf repolist all) == *"wine"*]]; then
+                        sudo dnf update && sudo dnf upgrade
+                        sudo dnf install p7zip p7zip-plugins curl cabextract wine
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    else
+                        sudo dnf install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm 
+                        sudo dnf install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+                        sudo dnf config-manager --add-repo https://download.opensuse.org/repositories/Emulators:/Wine:/Fedora/Fedora_38/Emulators:Wine:Fedora.repo
+                        sudo dnf update && sudo dnf upgrade
+                        sudo dnf install p7zip p7zip-plugins curl wine cabextract
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    fi
+                elif [[ $DISTRO_VERSION == *"Fedora"*"Rawhide"* ]]; then
+                    if [[ $(sudo dnf repolist all) == *"rpmfusion-free-release"*]] && [[ $(sudo dnf repolist all) == *"rpmfusion-nonfree-release"*]] && [[ $(sudo dnf repolist all) == *"wine"*]]; then
+                        sudo dnf update && sudo dnf upgrade
+                        sudo dnf install p7zip p7zip-plugins curl cabextract wine
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    else
+                        sudo dnf install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm 
+                        sudo dnf install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+                        sudo dnf config-manager --add-repo https://download.opensuse.org/repositories/Emulators:/Wine:/Fedora/Fedora_Rawhide/Emulators:Wine:Fedora.repo
+                        sudo dnf update && sudo dnf upgrade
+                        sudo dnf install p7zip p7zip-plugins curl wine cabextract
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    fi
+                else
+                    echo -e "${YELLOW}The installer doesn't support your current Linux distribution ($DISTRO_VERSION) at this time!${NOCOLOR}";
+                    echo -e "${RED}The installer has been terminated!${NOCOLOR}"
+                    exit;   
+                fi
+            fi
+        elif [[ $DISTRO_VERSION == *"Gentoo"*"Linux"* ]]; then
+            if [[ $(equery list '*') == *"virtual/wine app-emulation/winetricks"*"app-emulation/wine-mono"*"app-emulation/wine-gecko"*"app-arch/p7zip"*"app-arch/cabextract"*"net-misc/curl"*"net-fs/samba"*"net-dialup/ppp"* ]]; then
+                echo -e "${GREEN}The latest wine version is already installed.${NOCOLOR}"
+            else
+                echo -e "${YELLOW}The latest wine version will be installed!${NOCOLOR}"
+                sudo emerge -nav virtual/wine app-emulation/winetricks app-emulation/wine-mono app-emulation/wine-gecko app-arch/p7zip app-arch/cabextract net-misc/curl net-fs/samba net-dialup/ppp
+                echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+            fi
+        elif [[ $DISTRO_VERSION == *"nixos"* ]] || [[ $DISTRO_VERSION == *"NixOS"* ]]; then
+            if [[ $(nix-env -qa --installed "*") == *"nixos.curl"*"nixos.cabextract"*"nixos.p7zip"*"nixos.wine-staging"* ]]; then
+                echo -e "${GREEN}The latest wine version is already installed.${NOCOLOR}"
+            else
+                echo -e "${YELLOW}The latest wine version will be installed!${NOCOLOR}"
+                sudo nix-env -iA nixos.curl nixos.cabextract nixos.p7zip nixos.wine-staging
+                echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+            fi
+        elif [[ $DISTRO_VERSION == *"openSUSE"* ]]; then
+            if [[ $(zypper search --installed-only) == *"p7zip-full"*"curl"*"wine"*"cabextract"* ]]; then
+                echo -e "${GREEN}The latest wine version is already installed.${NOCOLOR}"
+            else
+                echo -e "${YELLOW}The latest wine version will be installed!${NOCOLOR}"
+                if [[ $DISTRO_VERSION == *"openSUSE"*"15.4"* ]]; then
+                    if [[ $(zypper lr -u) == *"https://download.opensuse.org/repositories/Emulators:/Wine/openSUSE_Leap_15.4/"*]]
+                        sudo zypper install -y p7zip-full curl wine cabextract
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    else
+                        sudo zypper ar -cfp 95 https://download.opensuse.org/repositories/Emulators:/Wine/openSUSE_Leap_15.4/ wine
+                        sudo zypper install p7zip-full curl wine cabextract
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    fi
+                elif [[ $DISTRO_VERSION == *"openSUSE"*"15.5"* ]]; then
+                    if [[ $(zypper lr -u) == *"https://download.opensuse.org/repositories/Emulators:/Wine/openSUSE_Leap_15.5/"*]]
+                        sudo zypper install -y p7zip-full curl wine cabextract
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    else
+                        sudo zypper ar -cfp 95 https://download.opensuse.org/repositories/Emulators:/Wine/openSUSE_Leap_15.5/ wine
+                        sudo zypper install p7zip-full curl wine cabextract
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    fi
+                elif [[ $DISTRO_VERSION == *"openSUSE"*"Tumbleweed"* ]]; then
+                    if [[ $(zypper lr -u) == *"https://download.opensuse.org/repositories/Emulators:/Wine/openSUSE_Tumbleweed/"*]]
+                        sudo zypper install -y p7zip-full curl wine cabextract
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    else
+                        sudo zypper ar -cfp 95 https://download.opensuse.org/repositories/Emulators:/Wine/openSUSE_Tumbleweed/ wine
+                        sudo zypper install p7zip-full curl wine cabextract
+                        echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                    fi
+                else
+                    echo -e "${YELLOW}The installer doesn't support your current Linux distribution ($DISTRO_VERSION) at this time!${NOCOLOR}"; 
+                    echo -e "${RED}The installer has been terminated!${NOCOLOR}"
+                    exit;
+                fi
+            fi
+        elif [[ $DISTRO_VERSION == *"Red Hat Enterprise Linux"* ]]; then
+            if [[ $(dnf list installed) == *"curl"*"cabextract"*"wine"*"p7zip"*"p7zip-plugins"* ]]; then
+                echo -e "${GREEN}The latest wine version is already installed.${NOCOLOR}"
+            else
+                echo -e "${YELLOW}The latest wine version will be installed!${NOCOLOR}"
+                if [[ $DISTRO_VERSION == *"Red Hat Enterprise Linux"*"8"* ]]; then
+                    sudo subscription-manager repos --enable codeready-builder-for-rhel-8-x86_64-rpms
+                    sudo rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+                    sudo dnf update && sudo dnf upgrade
+                    sudo dnf install curl cabextract p7zip p7zip-plugins wine
+                    echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                elif [[ $DISTRO_VERSION == *"Red Hat Enterprise Linux"*"9"* ]]; then
+                    sudo subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
+                    sudo rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+                    sudo dnf update && sudo dnf upgrade
+                    sudo dnf install curl cabextract p7zip p7zip-plugins wine
+                    echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+                else
+                    echo -e "${YELLOW}The installer doesn't support your current Linux distribution ($DISTRO_VERSION) at this time!${NOCOLOR}"; 
+                    echo -e "${RED}The installer has been terminated!${NOCOLOR}"
+                    exit;
+                fi
+            fi
+        elif [[ $DISTRO_VERSION == *"Solus"*"Linux"* ]]; then
+            if [[ $(eopkg li -l) == *"wine"*"winetricks"*"p7zip"*"curl"*"cabextract"*"samba"*"ppp"* ]]; then
+                echo -e "${GREEN}The latest wine version is already installed.${NOCOLOR}"
+            else
+                echo -e "${YELLOW}The latest wine version will be installed!${NOCOLOR}"
+                sudo eopkg install -y wine winetricks p7zip curl cabextract samba ppp
+                echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+            fi
+        elif [[ $DISTRO_VERSION == *"Void"*"Linux"* ]]; then
+            if [[ $(xbps-query -l | awk '{ print $2 }' | xargs -n1 xbps-uhelper getpkgname) == *"wine"*"wine-mono"*"wine-gecko"*"winetricks"*"p7zip"*"curl"*"cabextract"*"samba"*"ppp"* ]]; then
+               echo -e "${GREEN}The latest wine version is already installed.${NOCOLOR}"
+            else
+                echo -e "${YELLOW}The latest wine version will be installed!${NOCOLOR}"
+                sudo xbps-install -Sy wine wine-mono wine-gecko winetricks p7zip curl cabextract samba ppp
+                echo -e "${GREEN}The latest wine version is installed!${NOCOLOR}"
+            fi
+        else
+            echo -e "${YELLOW}The installer doesn't support your current Linux distribution ($DISTRO_VERSION) at this time!${NOCOLOR}"; 
+            echo -e "${RED}The installer has been terminated!${NOCOLOR}"
+            exit;
+        fi
+}
+
+#####################################################################################################################################################################################################################
+# ALL DIALOGS ARE ARRANGED HERE:                                                                                                                                                                                    #
+#####################################################################################################################################################################################################################
+
+##############################################################################################################################################################################
+# DOWNLOADER - DIALOG:                                                                                                                                                         #
+##############################################################################################################################################################################
+
+function SP_DOWNLOADER {
+    wget -N -P "$SP_PATH/locale" --progress=dot "$SP_DOWNLOADER_FILE_URL" 2>&1 |\
+    grep "%" |\
+    sed -u -e "s,\.,,g" | awk '{print $2}' | sed -u -e "s,\%,,g"  | dialog --backtitle "$SP_TITLE" --title "$SP_DOWNLOADER_SUBTITLE" --gauge "$SP_DOWNLOADER_TEXT" 10 100
+}
+
+##############################################################################################################################################################################
+# WELCOME - DIALOGS:                                                                                                                                                           #
+##############################################################################################################################################################################
+
+function SP_WELCOME {
+    SP_LOCALE=$(dialog --backtitle "$SP_TITLE" \
+        --title "$SP_WELCOME_SUBTITLE" \
+        --radiolist "$SP_WELCOME_TEXT" 0 0 0 \
+            01 "中文(简体)" off\
+            02 "Čeština" off\
+            03 "English" on\
+            04 "Français" off\
+            05 "Deutsch" off\
+            06 "Italiano" off\
+            07 "日本語" off\
+            08 "한국어" off\
+            09 "Española" off 3>&1 1>&2 2>&3 3>&-;)
+
+    if [ $PIPESTATUS -eq 0 ]; then
+        SP_CONFIG_LOCALE && SP_SHOW_LICENSE # Shows the user the license agreement.
+    elif [ $PIPESTATUS -eq 1 ]; then
+        SP_LOCALE=$(echo $LANG) && SP_CONFIG_LOCALE && SP_WELCOME_EXIT # Displays a warning to the user whether the program should really be terminated.
+    elif [ $PIPESTATUS -eq 255 ]; then
+        echo -e "${RED}[ESC] key pressed!${NOCOLOR}" # Program has been terminated manually!
+    else
+        echo -e "${RED}The installer was terminated for inexplicable reasons!${NOCOLOR}"
+        exit;
+    fi
+}
+
+##############################################################################################################################################################################
+
+function SP_WELCOME_EXIT {
+    dialog --backtitle "$SP_TITLE" \
+        --yesno "$SP_WELCOME_LABEL_1" 0 0
+        response=$?
+        case $response in
+            0) clear && exit;; # Program has been terminated manually!
+            1) SP_WELCOME;; # Go back to the welcome window!
+            255) echo -e "${RED}[ESC] key pressed!${NOCOLOR}";; # Program has been terminated manually!
+            *) echo -e "${RED}The installer was terminated for inexplicable reasons!${NOCOLOR}" && exit 1;;
+        esac
+}
+
+##############################################################################################################################################################################
+# LICENSE - DIALOGS:                                                                                                                                                           #
+##############################################################################################################################################################################
+
+function SP_SHOW_LICENSE {
+    dialog --backtitle "$SP_TITLE" \
+        --yesno "`cat $SP_LICENSE_FILE`" 0 0
+        response=$?
+        case $response in
+            0) SP_SELECT_OS_VERSION;; # Open the next dialog window for selecting the correct Linux distribution.
+            1) SP_SHOW_LICENSE_EXIT;; #Displays an error message that the license terms have not been accepted and warning the user whether the program should really be terminated!
+            255) echo -e "${RED}[ESC] key pressed!${NOCOLOR}";; # Program has been terminated manually!
+            *) echo -e "${RED}The installer was terminated for inexplicable reasons!${NOCOLOR}" && exit 1;;
+        esac
+} 
+
+##############################################################################################################################################################################
+
+function SP_SHOW_LICENSE_EXIT {
+    dialog --backtitle "$SP_TITLE" \
+        --yesno "$SP_LICENSE_EXIT_TEXT" 0 0
+        response=$?
+        case $response in
+            0) SP_SHOW_LICENSE;; # Open the next dialog for accept the license.
+            1) exit;; # Program has been terminated manually!
+            255) echo -e "${RED}[ESC] key pressed!${NOCOLOR}";; # Program has been terminated manually!
+            *) echo -e "${RED}The installer was terminated for inexplicable reasons!${NOCOLOR}" && exit 1;;
+        esac
+}
+
+##############################################################################################################################################################################
+# AUTOMATIC SYSTEM ANALYSIS (RAM, VRAM, ...) AND INSTALLATION OF PACKAGES (GPU-DRIVER & WINE) - DIALOGS                                                                      #
+##############################################################################################################################################################################
+
+# ...
+
+##############################################################################################################################################################################
+# INSTALLATION OF WINEPREFIXES - DIALOGS                                                                                                                                     #
+##############################################################################################################################################################################
+
+# ...
+
+##############################################################################################################################################################################
+# EXTENSIONS - DIALOGS                                                                                                                                                       #
+##############################################################################################################################################################################
+
+# ...
+
+##############################################################################################################################################################################
+# INSTALLATION COMPLETE - DIALOGS                                                                                                                                            #
+##############################################################################################################################################################################
+
+# ...
+
+#####################################################################################################################################################################################################################
+# THE INSTALLATION PROGRAM IS STARTED HERE:                                                                                                                                                                         #
+#####################################################################################################################################################################################################################
+
+SP_LOAD_COLOR_SHEME
+SP_ADD_DIRECTORIES
+SP_LOG_INSTALLATION
+SP_CHECK_REQUIRED_COMMANDS
